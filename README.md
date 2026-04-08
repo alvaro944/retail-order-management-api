@@ -4,7 +4,7 @@ Backend API for managing products, customers, inventory, and orders in a retail 
 
 ## Current Status
 
-Phase 0 is implemented:
+Phase 1 is implemented:
 
 - Spring Boot 3 + Java 21 + Maven bootstrap
 - Modular package structure by domain
@@ -12,7 +12,9 @@ Phase 0 is implemented:
 - `dev` and `test` profiles
 - UTC and ISO-8601 date/time defaults
 - Technical health endpoint at `/api/v1/health`
-- Initial test setup for build validation
+- Product catalog module with create, read, update, and logical delete
+- Validation, `404` handling, and `409` handling for duplicate SKU
+- Integration tests for the `product` module
 
 ## Tech Stack
 
@@ -74,6 +76,14 @@ SERVER_PORT=8080
 mvn spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
+For manual API checks without PostgreSQL, run the application with the `test` profile and include the test classpath so the in-memory H2 driver is available:
+
+```bash
+mvn "-Dspring-boot.run.profiles=test" "-Dspring-boot.run.useTestClasspath=true" spring-boot:run
+```
+
+If you run the packaged jar, use the `dev` profile. The `test` profile is intended for automated tests and local manual checks through Maven.
+
 Base URL:
 
 ```text
@@ -93,6 +103,25 @@ mvn clean verify
 ```
 
 The test profile uses an isolated in-memory H2 database so the build can be validated without a local PostgreSQL instance.
+
+### Manual API Smoke Test
+
+Phase 1 manual validation can be done with the following sequence after the app is running:
+
+```bash
+curl -X POST http://localhost:8080/api/v1/products \
+  -H "Content-Type: application/json" \
+  -d "{\"name\":\"Mouse\",\"description\":\"Compact mouse\",\"price\":29.99,\"sku\":\"MOU-100\"}"
+
+curl http://localhost:8080/api/v1/products
+curl http://localhost:8080/api/v1/products/1
+
+curl -X PUT http://localhost:8080/api/v1/products/1 \
+  -H "Content-Type: application/json" \
+  -d "{\"name\":\"Mouse Pro\",\"description\":\"Updated\",\"price\":39.99,\"sku\":\"MOU-101\"}"
+
+curl -X DELETE http://localhost:8080/api/v1/products/1
+```
 
 ## Configuration Notes
 
@@ -147,12 +176,10 @@ The test profile uses an isolated in-memory H2 database so the build can be vali
 
 ## Immediate Next Step
 
-Phase 1 should implement the `product` module with:
+Phase 2 should implement the `customer` module following the same approach used in Phase 1:
 
-- product entity
-- DTOs
-- repository
-- service layer
-- REST controller
-- validation
-- resource-not-found handling
+- domain-based package structure
+- DTO-driven REST API
+- validation and clean error handling
+- automated validation with `mvn clean verify`
+- visible manual API verification before closing the phase
