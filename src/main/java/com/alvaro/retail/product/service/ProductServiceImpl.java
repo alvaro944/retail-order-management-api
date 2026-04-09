@@ -1,7 +1,9 @@
 package com.alvaro.retail.product.service;
 
+import com.alvaro.retail.common.exception.BusinessConflictException;
 import com.alvaro.retail.common.exception.DuplicateResourceException;
 import com.alvaro.retail.common.exception.ResourceNotFoundException;
+import com.alvaro.retail.inventory.repository.InventoryRepository;
 import com.alvaro.retail.product.dto.ProductCreateRequest;
 import com.alvaro.retail.product.dto.ProductResponse;
 import com.alvaro.retail.product.dto.ProductUpdateRequest;
@@ -16,9 +18,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class ProductServiceImpl implements ProductService {
 
     private final ProductRepository productRepository;
+    private final InventoryRepository inventoryRepository;
 
-    public ProductServiceImpl(ProductRepository productRepository) {
+    public ProductServiceImpl(ProductRepository productRepository, InventoryRepository inventoryRepository) {
         this.productRepository = productRepository;
+        this.inventoryRepository = inventoryRepository;
     }
 
     @Override
@@ -61,6 +65,9 @@ public class ProductServiceImpl implements ProductService {
     @Transactional
     public void deleteProduct(Long id) {
         Product product = getActiveProduct(id);
+        if (inventoryRepository.existsByProductId(id)) {
+            throw new BusinessConflictException("Product with id " + id + " has inventory and cannot be deleted");
+        }
         product.setActive(false);
         productRepository.saveAndFlush(product);
     }

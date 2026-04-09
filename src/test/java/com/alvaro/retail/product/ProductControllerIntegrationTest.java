@@ -1,5 +1,7 @@
 package com.alvaro.retail.product;
 
+import com.alvaro.retail.inventory.entity.Inventory;
+import com.alvaro.retail.inventory.repository.InventoryRepository;
 import com.alvaro.retail.product.entity.Product;
 import com.alvaro.retail.product.repository.ProductRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,8 +34,12 @@ class ProductControllerIntegrationTest {
     @Autowired
     private ProductRepository productRepository;
 
+    @Autowired
+    private InventoryRepository inventoryRepository;
+
     @BeforeEach
     void setUp() {
+        inventoryRepository.deleteAll();
         productRepository.deleteAll();
     }
 
@@ -217,6 +223,16 @@ class ProductControllerIntegrationTest {
             .andExpect(jsonPath("$.length()").value(0));
     }
 
+    @Test
+    void deleteProductReturnsConflictWhenInventoryExists() throws Exception {
+        Product product = persistProduct("Console", "Gaming console", new BigDecimal("399.99"), "CON-100", true);
+        persistInventory(product, 4, 1);
+
+        mockMvc.perform(delete("/products/{id}", product.getId()))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.detail").value("Product with id " + product.getId() + " has inventory and cannot be deleted"));
+    }
+
     private Product persistProduct(String name, String description, BigDecimal price, String sku, boolean active) {
         Product product = new Product();
         product.setName(name);
@@ -225,5 +241,13 @@ class ProductControllerIntegrationTest {
         product.setSku(sku);
         product.setActive(active);
         return productRepository.save(product);
+    }
+
+    private Inventory persistInventory(Product product, int quantityAvailable, int minimumStock) {
+        Inventory inventory = new Inventory();
+        inventory.setProduct(product);
+        inventory.setQuantityAvailable(quantityAvailable);
+        inventory.setMinimumStock(minimumStock);
+        return inventoryRepository.save(inventory);
     }
 }

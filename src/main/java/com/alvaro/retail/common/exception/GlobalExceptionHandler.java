@@ -25,6 +25,11 @@ public class GlobalExceptionHandler {
         return buildProblemDetail(HttpStatus.CONFLICT, exception.getMessage(), request.getRequestURI());
     }
 
+    @ExceptionHandler(BusinessConflictException.class)
+    public ProblemDetail handleBusinessConflict(BusinessConflictException exception, HttpServletRequest request) {
+        return buildProblemDetail(HttpStatus.CONFLICT, exception.getMessage(), request.getRequestURI());
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ProblemDetail handleMethodArgumentNotValid(MethodArgumentNotValidException exception, HttpServletRequest request) {
         ProblemDetail problemDetail = buildProblemDetail(
