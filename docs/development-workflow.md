@@ -53,6 +53,7 @@ Examples:
   `mvn "-Dspring-boot.run.profiles=test" "-Dspring-boot.run.useTestClasspath=true" spring-boot:run`
 - Use the packaged jar with the `dev` profile rather than the `test` profile.
 - Call the endpoint with Postman, curl, or Swagger when available.
+- On Windows PowerShell, prefer `Invoke-WebRequest` or call `curl.exe` explicitly. Plain `curl` is usually an alias to `Invoke-WebRequest`, so Unix-style flags such as `-X`, `-H`, and `-d` can fail unexpectedly.
 - Verify status code, response body, and basic error behavior.
 - Capture any relevant notes for the commit, PR, or documentation.
 
@@ -67,6 +68,22 @@ For Phase 1, the minimum manual flow is:
 - confirm a later `GET` returns `404`
 - verify one invalid payload returns `400`
 - verify one duplicate SKU returns `409`
+
+For Phase 2, the minimum manual flow is:
+
+- check `GET /api/v1/health`
+- create a customer
+- list customers
+- fetch one customer by id
+- update that customer
+- delete it logically
+- confirm a later `GET` returns `404`
+- verify one duplicate email returns `409`
+- verify one invalid payload returns `400`
+
+PowerShell note:
+
+- A `404`, `409`, or `400` response from `Invoke-WebRequest` is surfaced as an exception. Treat that as expected when you are deliberately testing error scenarios, and inspect the response details instead of assuming the API failed to execute.
 
 ## Initial Commit Strategy
 
