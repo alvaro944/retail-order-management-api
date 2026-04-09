@@ -4,7 +4,7 @@ Backend API for managing products, customers, inventory, and orders in a retail 
 
 ## Current Status
 
-Phase 1 is implemented:
+Phase 2 is implemented:
 
 - Spring Boot 3 + Java 21 + Maven bootstrap
 - Modular package structure by domain
@@ -13,8 +13,9 @@ Phase 1 is implemented:
 - UTC and ISO-8601 date/time defaults
 - Technical health endpoint at `/api/v1/health`
 - Product catalog module with create, read, update, and logical delete
+- Customer management module with create, read, update, and logical delete
 - Validation, `404` handling, and `409` handling for duplicate SKU
-- Integration tests for the `product` module
+- Integration tests for the `product` and `customer` modules
 
 ## Tech Stack
 
@@ -84,6 +85,8 @@ mvn "-Dspring-boot.run.profiles=test" "-Dspring-boot.run.useTestClasspath=true" 
 
 If you run the packaged jar, use the `dev` profile. The `test` profile is intended for automated tests and local manual checks through Maven.
 
+On Windows PowerShell, `curl` is usually an alias for `Invoke-WebRequest`, not the Unix `curl` CLI. That means flags such as `-X`, `-H`, and `-d` will not behave the same way unless you call `curl.exe` explicitly. For PowerShell-first smoke tests, prefer `Invoke-WebRequest` with `-Method`, `-ContentType`, and `-Body`.
+
 Base URL:
 
 ```text
@@ -106,7 +109,9 @@ The test profile uses an isolated in-memory H2 database so the build can be vali
 
 ### Manual API Smoke Test
 
-Phase 1 manual validation can be done with the following sequence after the app is running:
+Phase 1 and Phase 2 manual validation can be done with the following sequence after the app is running.
+
+Product flow:
 
 ```bash
 curl -X POST http://localhost:8080/api/v1/products \
@@ -122,6 +127,51 @@ curl -X PUT http://localhost:8080/api/v1/products/1 \
 
 curl -X DELETE http://localhost:8080/api/v1/products/1
 ```
+
+Customer flow in PowerShell:
+
+```powershell
+Invoke-WebRequest -Uri "http://localhost:8080/api/v1/health"
+
+Invoke-WebRequest `
+  -Uri "http://localhost:8080/api/v1/customers" `
+  -Method POST `
+  -ContentType "application/json" `
+  -Body '{"firstName":"Ana","lastName":"Garcia","email":"ana@example.com","phone":"+34 600 000 001"}'
+
+Invoke-WebRequest -Uri "http://localhost:8080/api/v1/customers"
+Invoke-WebRequest -Uri "http://localhost:8080/api/v1/customers/1"
+
+Invoke-WebRequest `
+  -Uri "http://localhost:8080/api/v1/customers/1" `
+  -Method PUT `
+  -ContentType "application/json" `
+  -Body '{"firstName":"Ana Updated","lastName":"Garcia","email":"ana.updated@example.com"}'
+
+Invoke-WebRequest `
+  -Uri "http://localhost:8080/api/v1/customers/1" `
+  -Method DELETE
+```
+
+Expected error checks for the customer flow:
+
+```powershell
+Invoke-WebRequest -Uri "http://localhost:8080/api/v1/customers/1"
+
+Invoke-WebRequest `
+  -Uri "http://localhost:8080/api/v1/customers" `
+  -Method POST `
+  -ContentType "application/json" `
+  -Body '{"firstName":"Otro","lastName":"User","email":"ana.updated@example.com"}'
+
+Invoke-WebRequest `
+  -Uri "http://localhost:8080/api/v1/customers" `
+  -Method POST `
+  -ContentType "application/json" `
+  -Body '{"firstName":"","email":"not-valid"}'
+```
+
+In PowerShell, the last three commands are expected to raise an exception because the API returns `404`, `409`, and `400` respectively. That is still a successful manual validation of the endpoint behavior.
 
 ## Configuration Notes
 
@@ -176,7 +226,7 @@ curl -X DELETE http://localhost:8080/api/v1/products/1
 
 ## Immediate Next Step
 
-Phase 2 should implement the `customer` module following the same approach used in Phase 1:
+Phase 3 should implement the `inventory` module following the same approach used in the previous phases:
 
 - domain-based package structure
 - DTO-driven REST API
