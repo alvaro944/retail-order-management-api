@@ -19,7 +19,7 @@ If the task touches orders, also read:
 
 ## Current Project Status
 
-Phase 5 is complete.
+Phase 6 is complete.
 
 Implemented modules:
 
@@ -30,7 +30,7 @@ Implemented modules:
 
 Next planned phase:
 
-- add OpenAPI and Swagger documentation without changing the established business flow unless explicitly requested
+- add Spring Security and JWT without changing the established business flow unless explicitly requested
 
 ## Architecture Rules
 
@@ -134,6 +134,13 @@ Manual API verification:
 
 ```bash
 mvn "-Dspring-boot.run.profiles=test" "-Dspring-boot.run.useTestClasspath=true" spring-boot:run
+```
+
+Documentation URLs during manual verification:
+
+```text
+http://localhost:8080/api/v1/swagger-ui/index.html
+http://localhost:8080/api/v1/v3/api-docs
 ```
 
 Windows PowerShell notes:
