@@ -4,7 +4,7 @@ Backend API for managing products, customers, inventory, and orders in a retail 
 
 ## Current Status
 
-Phase 5 is implemented:
+Phase 6 is implemented:
 
 - Spring Boot 3 + Java 21 + Maven bootstrap
 - Modular package structure by domain
@@ -21,6 +21,8 @@ Phase 5 is implemented:
 - Historical order-item snapshots with product name, SKU, and unit price
 - Stock validation and inventory discount during order creation
 - Order lifecycle handling with inventory restoration during cancellation
+- OpenAPI JSON documentation for the current REST surface
+- Swagger UI for interactive API exploration
 - Validation, `404` handling, and `409` handling for duplicate SKU
 - Integration tests for the `product`, `customer`, `inventory`, and `order` modules
 
@@ -34,6 +36,7 @@ Phase 5 is implemented:
 - PostgreSQL
 - Maven
 - Lombok
+- Springdoc OpenAPI + Swagger UI
 - H2 for test profile
 
 ## Project Structure
@@ -114,6 +117,8 @@ Current module endpoints:
 - `POST /orders/{id}/cancel`
 - `GET /orders`
 - `GET /orders/{id}`
+- `GET /v3/api-docs`
+- `GET /swagger-ui/index.html`
 
 ## Agent And Maintainer Guide
 
@@ -168,6 +173,18 @@ Base URL:
 http://localhost:8080/api/v1
 ```
 
+OpenAPI JSON:
+
+```text
+http://localhost:8080/api/v1/v3/api-docs
+```
+
+Swagger UI:
+
+```text
+http://localhost:8080/api/v1/swagger-ui/index.html
+```
+
 Technical health endpoint:
 
 ```text
@@ -193,7 +210,7 @@ mvn test -Dtest=OrderControllerIntegrationTest
 
 ### Manual API Smoke Test
 
-Phase 1 and Phase 2 manual validation can be done with the following sequence after the app is running.
+The following examples can be used after the app is running. For Phase 6 manual validation, also open Swagger UI and the OpenAPI JSON URLs listed above and confirm the `product`, `customer`, `inventory`, and `order` modules are visible.
 
 Product flow:
 
@@ -418,10 +435,4 @@ Error payloads are returned as RFC 9457 `ProblemDetail` responses with a `path` 
 
 ## Immediate Next Step
 
-Phase 6 should add OpenAPI and Swagger documentation after the order lifecycle module:
-
-- domain-based package structure
-- DTO-driven REST API
-- validation and clean error handling
-- automated validation with `mvn clean verify`
-- visible manual API verification before closing the phase
+Phase 7 should add Spring Security and JWT after the documentation phase while preserving the current REST contracts unless the phase explicitly requires otherwise.

@@ -72,6 +72,7 @@ Examples:
 - Call the endpoint with Postman, curl, or Swagger when available.
 - On Windows PowerShell, prefer `Invoke-WebRequest` or call `curl.exe` explicitly. Plain `curl` is usually an alias to `Invoke-WebRequest`, so Unix-style flags such as `-X`, `-H`, and `-d` can fail unexpectedly.
 - Verify status code, response body, and basic error behavior.
+- When Swagger is available, confirm both the UI and the OpenAPI JSON document load from the expected URLs.
 - Capture any relevant notes for the commit, PR, or documentation.
 
 For Phase 1, the minimum manual flow is:
@@ -138,6 +139,15 @@ For Phase 5, the minimum manual flow is:
 - verify inventory returned to its original value
 - verify cancelling the same order again returns `409`
 - verify cancelling a missing order returns `404`
+
+For Phase 6, the minimum manual flow is:
+
+- start the app with the `test` profile
+- open `http://localhost:8080/api/v1/swagger-ui/index.html`
+- open `http://localhost:8080/api/v1/v3/api-docs`
+- confirm the Swagger UI shows `product`, `customer`, `inventory`, and `order`
+- confirm `POST /orders/{id}/cancel` is documented
+- confirm the OpenAPI JSON exposes the same modules and documentation endpoints without changing business routes
 
 PowerShell note:
 
