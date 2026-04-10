@@ -30,7 +30,12 @@ Implemented modules:
 
 Next planned phase:
 
-- add Spring Security and JWT without changing the established business flow unless explicitly requested
+- split the next security work into:
+  - Phase 7A: Spring Security + JWT base
+  - Phase 7B: Spring Security + JWT protection
+  - recommended branches:
+    - `codex/phase-7a-security-jwt-base`
+    - `codex/phase-7b-security-jwt-protection`
 
 ## Architecture Rules
 

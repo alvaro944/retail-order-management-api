@@ -403,16 +403,17 @@ Error payloads are returned as RFC 9457 `ProblemDetail` responses with a `path` 
 
 ### Portfolio Version
 
-8. Spring Security + JWT
-9. Unit and integration testing
+8. Phase 7A: Spring Security + JWT base
+9. Phase 7B: Spring Security + JWT protection
 10. Docker
 11. GitHub Actions CI
+12. Unit and integration testing hardening if needed
 
 ### Advanced Evolution
 
-12. Domain events
-13. Stronger hexagonal boundaries
-14. Microservice extraction if justified
+13. Domain events
+14. Stronger hexagonal boundaries
+15. Microservice extraction if justified
 
 ## Suggested Commit Plan
 
@@ -435,4 +436,12 @@ Error payloads are returned as RFC 9457 `ProblemDetail` responses with a `path` 
 
 ## Immediate Next Step
 
-Phase 7 should add Spring Security and JWT after the documentation phase while preserving the current REST contracts unless the phase explicitly requires otherwise.
+The next security work should be split into two controlled steps:
+
+- Phase 7A: Spring Security + JWT base
+- Phase 7B: Spring Security + JWT protection
+
+Recommended branch names:
+
+- `codex/phase-7a-security-jwt-base`
+- `codex/phase-7b-security-jwt-protection`
