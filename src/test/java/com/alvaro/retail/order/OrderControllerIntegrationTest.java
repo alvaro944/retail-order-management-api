@@ -362,6 +362,58 @@ class OrderControllerIntegrationTest {
     }
 
     @Test
+    void cancelOrderReturnsUpdatedOrderAndRestoresInventory() throws Exception {
+        Customer customer = persistCustomer("Ana", "Garcia", "ana@example.com", true);
+        Product product = persistProduct("Wireless Mouse", "Compact mouse", new BigDecimal("29.99"), "WM-100", true);
+        Inventory inventory = persistInventory(product, 10, 2);
+
+        Long orderId = createOrder(customer.getId(), product.getId(), 3);
+
+        mockMvc.perform(post("/orders/{id}/cancel", orderId))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(orderId))
+            .andExpect(jsonPath("$.status").value("CANCELLED"))
+            .andExpect(jsonPath("$.items.length()").value(1))
+            .andExpect(jsonPath("$.items[0].productId").value(product.getId()))
+            .andExpect(jsonPath("$.items[0].quantity").value(3))
+            .andExpect(jsonPath("$.totalAmount").value(89.97));
+
+        Inventory restoredInventory = inventoryRepository.findById(inventory.getId()).orElseThrow();
+        Assertions.assertEquals(10, restoredInventory.getQuantityAvailable());
+        Assertions.assertEquals("CANCELLED", orderRepository.findById(orderId).orElseThrow().getStatus().name());
+
+        mockMvc.perform(get("/orders/{id}", orderId))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("CANCELLED"));
+    }
+
+    @Test
+    void cancelOrderReturnsConflictWhenOrderIsAlreadyCancelled() throws Exception {
+        Customer customer = persistCustomer("Ana", "Garcia", "ana@example.com", true);
+        Product product = persistProduct("Wireless Mouse", "Compact mouse", new BigDecimal("29.99"), "WM-100", true);
+        Inventory inventory = persistInventory(product, 10, 2);
+
+        Long orderId = createOrder(customer.getId(), product.getId(), 3);
+
+        mockMvc.perform(post("/orders/{id}/cancel", orderId))
+            .andExpect(status().isOk());
+
+        mockMvc.perform(post("/orders/{id}/cancel", orderId))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.detail").value("Order with id " + orderId + " is already cancelled"));
+
+        Inventory restoredInventory = inventoryRepository.findById(inventory.getId()).orElseThrow();
+        Assertions.assertEquals(10, restoredInventory.getQuantityAvailable());
+    }
+
+    @Test
+    void cancelOrderReturnsNotFoundWhenOrderDoesNotExist() throws Exception {
+        mockMvc.perform(post("/orders/{id}/cancel", 999L))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.detail").value("Order with id 999 was not found"));
+    }
+
+    @Test
     void getOrdersReturnsOrdersSortedByMostRecentFirst() throws Exception {
         Customer customer = persistCustomer("Ana", "Garcia", "ana@example.com", true);
         Product mouse = persistProduct("Wireless Mouse", "Compact mouse", new BigDecimal("29.99"), "WM-100", true);
@@ -406,6 +458,27 @@ class OrderControllerIntegrationTest {
             .andExpect(jsonPath("$.length()").value(2))
             .andExpect(jsonPath("$[0].items[0].productSku").value("MK-200"))
             .andExpect(jsonPath("$[1].items[0].productSku").value("WM-100"));
+    }
+
+    private Long createOrder(Long customerId, Long productId, int quantity) throws Exception {
+        MvcResult createResult = mockMvc.perform(post("/orders")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "customerId": %d,
+                      "items": [
+                        {
+                          "productId": %d,
+                          "quantity": %d
+                        }
+                      ]
+                    }
+                    """.formatted(customerId, productId, quantity)))
+            .andExpect(status().isCreated())
+            .andReturn();
+
+        Number orderId = com.jayway.jsonpath.JsonPath.read(createResult.getResponse().getContentAsString(), "$.id");
+        return orderId.longValue();
     }
 
     private Customer persistCustomer(String firstName, String lastName, String email, boolean active) {

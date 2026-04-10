@@ -4,7 +4,7 @@ Backend API for managing products, customers, inventory, and orders in a retail 
 
 ## Current Status
 
-Phase 4 is implemented:
+Phase 5 is implemented:
 
 - Spring Boot 3 + Java 21 + Maven bootstrap
 - Modular package structure by domain
@@ -17,9 +17,10 @@ Phase 4 is implemented:
 - Inventory module with one current-stock record per active product
 - Manual stock adjustments with increase and decrease operations
 - Minimum stock management and product deletion protection when inventory exists
-- Order module with transactional order creation and query endpoints
+- Order module with transactional order creation, cancellation, and query endpoints
 - Historical order-item snapshots with product name, SKU, and unit price
 - Stock validation and inventory discount during order creation
+- Order lifecycle handling with inventory restoration during cancellation
 - Validation, `404` handling, and `409` handling for duplicate SKU
 - Integration tests for the `product`, `customer`, `inventory`, and `order` modules
 
@@ -77,12 +78,15 @@ src/main/java/com/alvaro/retail
 
 ### Order
 
-- Orders support creation and query only in the current phase.
+- Orders support creation, cancellation, and query in the current phase.
+- Orders start in `CREATED` and can transition once to `CANCELLED`.
 - `OrderItem` stores snapshot product data so historical orders are not affected by later product edits.
 - Order creation requires an active customer, active products, existing inventory, and enough stock.
 - Repeated products in separate lines are rejected with `400`.
 - Missing inventory or insufficient stock returns `409`.
 - Inventory is reduced transactionally during order creation.
+- Cancelling an order restores inventory transactionally for every order item.
+- Cancelling an already cancelled order returns `409`.
 - Orders are listed from newest to oldest.
 
 ## API Surface
@@ -107,6 +111,7 @@ Current module endpoints:
 - `PUT /inventories/{id}`
 - `PATCH /inventories/{id}/adjust`
 - `POST /orders`
+- `POST /orders/{id}/cancel`
 - `GET /orders`
 - `GET /orders/{id}`
 
@@ -328,19 +333,25 @@ Invoke-WebRequest -Uri "http://localhost:8080/api/v1/orders/1"
 Invoke-WebRequest -Uri "http://localhost:8080/api/v1/products/1/inventory"
 
 Invoke-WebRequest `
-  -Uri "http://localhost:8080/api/v1/orders" `
+  -Uri "http://localhost:8080/api/v1/orders/1/cancel" `
   -Method POST `
-  -ContentType "application/json" `
-  -Body '{"customerId":1,"items":[{"productId":1,"quantity":100}]}'
+  -ContentType "application/json"
+
+Invoke-WebRequest -Uri "http://localhost:8080/api/v1/orders/1"
+Invoke-WebRequest -Uri "http://localhost:8080/api/v1/products/1/inventory"
 
 Invoke-WebRequest `
-  -Uri "http://localhost:8080/api/v1/orders" `
+  -Uri "http://localhost:8080/api/v1/orders/1/cancel" `
   -Method POST `
-  -ContentType "application/json" `
-  -Body '{"customerId":1,"items":[{"productId":999,"quantity":1}]}'
+  -ContentType "application/json"
+
+Invoke-WebRequest `
+  -Uri "http://localhost:8080/api/v1/orders/999/cancel" `
+  -Method POST `
+  -ContentType "application/json"
 ```
 
-In PowerShell, the last two commands are expected to raise an exception because the API returns `409` for insufficient stock and `404` for a product that does not exist. That is still a successful manual validation of the endpoint behavior.
+In PowerShell, the last two commands are expected to raise an exception because the API returns `409` for cancelling an already cancelled order and `404` for cancelling an order that does not exist. That is still a successful manual validation of the endpoint behavior.
 
 ## Error Semantics
 
@@ -370,7 +381,7 @@ Error payloads are returned as RFC 9457 `ProblemDetail` responses with a `path` 
 3. Phase 2: customers
 4. Phase 3: inventory
 5. Phase 4: orders
-6. Phase 5: global exception handling
+6. Phase 5: order lifecycle cancellation
 7. Phase 6: OpenAPI and Swagger
 
 ### Portfolio Version
@@ -407,7 +418,7 @@ Error payloads are returned as RFC 9457 `ProblemDetail` responses with a `path` 
 
 ## Immediate Next Step
 
-Phase 5 should strengthen cross-cutting exception handling and API documentation after the `order` module:
+Phase 6 should add OpenAPI and Swagger documentation after the order lifecycle module:
 
 - domain-based package structure
 - DTO-driven REST API

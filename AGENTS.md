@@ -19,7 +19,7 @@ If the task touches orders, also read:
 
 ## Current Project Status
 
-Phase 4 is complete.
+Phase 5 is complete.
 
 Implemented modules:
 
@@ -30,7 +30,7 @@ Implemented modules:
 
 Next planned phase:
 
-- strengthen cross-cutting exception handling and API documentation without changing the established business flow unless explicitly requested
+- add OpenAPI and Swagger documentation without changing the established business flow unless explicitly requested
 
 ## Architecture Rules
 
@@ -73,8 +73,9 @@ Next planned phase:
 
 ### Order
 
-- Orders are create-and-read only in the current phase.
-- Initial and only active status is `CREATED`.
+- Orders support creation, query, and cancellation in the current phase.
+- Order statuses are `CREATED` and `CANCELLED`.
+- Only orders in `CREATED` can transition to `CANCELLED`.
 - Each order item stores snapshot product data:
   - `productName`
   - `productSku`
@@ -89,6 +90,8 @@ Next planned phase:
   - sufficient stock
 - Missing inventory for an otherwise valid product is treated as `409`, not `404`.
 - Inventory is reduced inside the same transaction that creates the order.
+- Cancelling an order restores inventory inside the same transaction.
+- Cancelling an already cancelled order returns `409`.
 - If any order line fails, nothing should be persisted.
 - Order listing is sorted by `createdAt DESC, id DESC`.
 
@@ -103,10 +106,12 @@ Next planned phase:
   - inactive or missing customer
   - inactive or missing product
   - missing order
+  - missing inventory during cancellation recovery
 - `409`:
   - duplicate resource conflicts
   - stock conflicts
   - inventory business conflicts
+  - repeated order cancellation
 
 ## Testing And Verification
 

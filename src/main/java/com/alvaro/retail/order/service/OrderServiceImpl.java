@@ -100,6 +100,33 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
+    @Transactional
+    public OrderResponse cancelOrder(Long orderId) {
+        Order order = orderRepository.findById(orderId)
+            .orElseThrow(() -> new ResourceNotFoundException("Order with id " + orderId + " was not found"));
+
+        if (order.getStatus() != OrderStatus.CREATED) {
+            throw new BusinessConflictException("Order with id " + orderId + " is already cancelled");
+        }
+
+        List<Inventory> inventoriesToUpdate = new ArrayList<>();
+        for (OrderItem item : order.getItems()) {
+            Long productId = item.getProduct().getId();
+            Inventory inventory = inventoryRepository.findByProductIdAndProductActiveTrue(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Inventory for product with id " + productId + " was not found"));
+
+            inventory.setQuantityAvailable(inventory.getQuantityAvailable() + item.getQuantity());
+            inventoriesToUpdate.add(inventory);
+        }
+
+        inventoryRepository.saveAll(inventoriesToUpdate);
+        order.setStatus(OrderStatus.CANCELLED);
+
+        Order savedOrder = orderRepository.saveAndFlush(order);
+        return toResponse(savedOrder);
+    }
+
+    @Override
     public List<OrderResponse> getOrders() {
         return orderRepository.findAllByOrderByCreatedAtDescIdDesc().stream()
             .map(this::toResponse)

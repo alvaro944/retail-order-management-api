@@ -8,6 +8,8 @@ public interface OrderService {
 
     OrderResponse createOrder(OrderCreateRequest request);
 
+    OrderResponse cancelOrder(Long orderId);
+
     List<OrderResponse> getOrders();
 
     OrderResponse getOrderById(Long id);
