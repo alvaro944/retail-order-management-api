@@ -56,6 +56,70 @@ src/main/java/com/alvaro/retail
 └── RetailOrderManagementApiApplication.java
 ```
 
+## Module Rules Snapshot
+
+### Product
+
+- Active products are visible through reads; deleted products are soft-deleted.
+- SKU must remain unique.
+- Products with inventory cannot be logically deleted.
+
+### Customer
+
+- Active customers are visible through reads; deleted customers are soft-deleted.
+- Email must remain unique.
+
+### Inventory
+
+- There is exactly one inventory record per product.
+- Inventory can only exist for active products.
+- Manual decreases cannot reduce stock below zero.
+
+### Order
+
+- Orders support creation and query only in the current phase.
+- `OrderItem` stores snapshot product data so historical orders are not affected by later product edits.
+- Order creation requires an active customer, active products, existing inventory, and enough stock.
+- Repeated products in separate lines are rejected with `400`.
+- Missing inventory or insufficient stock returns `409`.
+- Inventory is reduced transactionally during order creation.
+- Orders are listed from newest to oldest.
+
+## API Surface
+
+Current module endpoints:
+
+- `GET /health`
+- `POST /products`
+- `GET /products`
+- `GET /products/{id}`
+- `PUT /products/{id}`
+- `DELETE /products/{id}`
+- `POST /customers`
+- `GET /customers`
+- `GET /customers/{id}`
+- `PUT /customers/{id}`
+- `DELETE /customers/{id}`
+- `POST /inventories`
+- `GET /inventories`
+- `GET /inventories/{id}`
+- `GET /products/{productId}/inventory`
+- `PUT /inventories/{id}`
+- `PATCH /inventories/{id}/adjust`
+- `POST /orders`
+- `GET /orders`
+- `GET /orders/{id}`
+
+## Agent And Maintainer Guide
+
+For future coding chats, see `AGENTS.md`. It documents:
+
+- architecture and domain conventions
+- established business rules per module
+- current error semantics
+- verification and manual testing expectations
+- recommended Codex skill flow for this repository
+
 ## Getting Started
 
 ### Prerequisites
@@ -112,6 +176,15 @@ mvn clean verify
 ```
 
 The test profile uses an isolated in-memory H2 database so the build can be validated without a local PostgreSQL instance.
+
+Useful focused test commands:
+
+```bash
+mvn test -Dtest=ProductControllerIntegrationTest
+mvn test -Dtest=CustomerControllerIntegrationTest
+mvn test -Dtest=InventoryControllerIntegrationTest
+mvn test -Dtest=OrderControllerIntegrationTest
+```
 
 ### Manual API Smoke Test
 
@@ -269,6 +342,16 @@ Invoke-WebRequest `
 
 In PowerShell, the last two commands are expected to raise an exception because the API returns `409` for insufficient stock and `404` for a product that does not exist. That is still a successful manual validation of the endpoint behavior.
 
+## Error Semantics
+
+The API currently follows these rules:
+
+- `400` for request validation failures and invalid business-rule input
+- `404` for missing or inactive resources
+- `409` for duplicate resources and stock-related business conflicts
+
+Error payloads are returned as RFC 9457 `ProblemDetail` responses with a `path` property.
+
 ## Configuration Notes
 
 - Development profile uses `ddl-auto=update` to keep local iteration simple.
@@ -314,11 +397,13 @@ In PowerShell, the last two commands are expected to raise an exception because 
 
 - Work in small increments, one feature or subtask at a time.
 - Create a dedicated branch for each task or phase before making changes.
+- Prefer a dedicated worktree for feature work when the main workspace has unrelated local changes.
 - Keep commits focused and small enough to explain clearly.
 - Run automated validation before closing a task, at minimum `mvn clean verify`.
 - Perform manual testing when the change affects application behavior or HTTP flows.
 - Do not merge a branch until both automated checks and manual verification are done.
 - Prefer documenting important decisions in Markdown as the project evolves.
+- Push the feature branch first and keep it even after updating `main` unless there is an explicit request to delete it.
 
 ## Immediate Next Step
 

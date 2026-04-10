@@ -11,6 +11,16 @@ This project should evolve in a controlled and professional way. The goal is not
 - Validate every change with automated checks.
 - Manually test every user-facing or API behavior before considering the task complete.
 - Do not push unfinished work to the main branch.
+- Update Markdown documentation when business rules, API behavior, or workflow expectations change.
+
+## Read Order For Future Chats
+
+When a future coding session starts, the minimum context pass should be:
+
+1. `README.md`
+2. `AGENTS.md`
+3. `docs/development-workflow.md`
+4. relevant module service and integration test files
 
 ## Branching Convention
 
@@ -28,6 +38,12 @@ codex/product-module
 codex/order-create-flow
 ```
 
+Preferred close-out behavior:
+
+- push the feature branch first
+- keep the feature branch after promoting the same commit to `main` unless explicitly asked to delete it
+- avoid working directly on `main`
+
 ## Validation Checklist
 
 Before committing:
@@ -41,6 +57,7 @@ Before merging:
 - Test the main scenario manually.
 - Verify the expected request and response flow if an endpoint was added or changed.
 - Confirm README or technical docs are updated when needed.
+- If a branch is promoted to `main`, keep the feature branch unless cleanup was explicitly requested.
 
 ## Manual Testing Guidance
 
@@ -81,9 +98,46 @@ For Phase 2, the minimum manual flow is:
 - verify one duplicate email returns `409`
 - verify one invalid payload returns `400`
 
+For Phase 3, the minimum manual flow is:
+
+- check `GET /api/v1/health`
+- create a product
+- create inventory for that product
+- list inventories
+- fetch inventory by id
+- fetch inventory by product id
+- update minimum stock
+- increase stock
+- verify a decrease below zero returns `409`
+- verify deleting a product with inventory returns `409`
+
+For Phase 4, the minimum manual flow is:
+
+- check `GET /api/v1/health`
+- create a customer
+- create a product
+- create inventory for that product
+- create an order
+- fetch that order by id
+- list orders
+- verify inventory was reduced
+- verify insufficient stock returns `409`
+- verify a missing product returns `404`
+- verify duplicated products in one order return `400`
+
 PowerShell note:
 
 - A `404`, `409`, or `400` response from `Invoke-WebRequest` is surfaced as an exception. Treat that as expected when you are deliberately testing error scenarios, and inspect the response details instead of assuming the API failed to execute.
+
+Helpful PowerShell pattern for negative checks:
+
+```powershell
+try {
+  Invoke-WebRequest -Uri "http://localhost:8080/api/v1/orders" -Method POST -ContentType "application/json" -Body $body
+} catch {
+  $_.ErrorDetails.Message
+}
+```
 
 ## Initial Commit Strategy
 
@@ -95,3 +149,11 @@ For early phases, prefer sequences like:
 4. Module scaffolding
 
 This keeps the history easy to read and useful in interviews.
+
+## Documentation Expectations
+
+When a phase changes the effective behavior of the system, update at least:
+
+- `README.md` for public project understanding
+- `AGENTS.md` for future AI-assisted sessions
+- `docs/development-workflow.md` when the working agreement changes
