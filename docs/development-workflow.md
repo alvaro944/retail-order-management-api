@@ -125,6 +125,20 @@ For Phase 4, the minimum manual flow is:
 - verify a missing product returns `404`
 - verify duplicated products in one order return `400`
 
+For Phase 5, the minimum manual flow is:
+
+- check `GET /api/v1/health`
+- create a customer
+- create a product
+- create inventory for that product
+- create an order
+- verify inventory was reduced
+- cancel that order
+- fetch the order by id and confirm status `CANCELLED`
+- verify inventory returned to its original value
+- verify cancelling the same order again returns `409`
+- verify cancelling a missing order returns `404`
+
 PowerShell note:
 
 - A `404`, `409`, or `400` response from `Invoke-WebRequest` is surfaced as an exception. Treat that as expected when you are deliberately testing error scenarios, and inspect the response details instead of assuming the API failed to execute.
