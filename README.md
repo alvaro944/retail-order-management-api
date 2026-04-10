@@ -4,7 +4,7 @@ Backend API for managing products, customers, inventory, and orders in a retail 
 
 ## Current Status
 
-Phase 3 is implemented:
+Phase 4 is implemented:
 
 - Spring Boot 3 + Java 21 + Maven bootstrap
 - Modular package structure by domain
@@ -17,8 +17,11 @@ Phase 3 is implemented:
 - Inventory module with one current-stock record per active product
 - Manual stock adjustments with increase and decrease operations
 - Minimum stock management and product deletion protection when inventory exists
+- Order module with transactional order creation and query endpoints
+- Historical order-item snapshots with product name, SKU, and unit price
+- Stock validation and inventory discount during order creation
 - Validation, `404` handling, and `409` handling for duplicate SKU
-- Integration tests for the `product`, `customer`, and `inventory` modules
+- Integration tests for the `product`, `customer`, `inventory`, and `order` modules
 
 ## Tech Stack
 
@@ -220,6 +223,52 @@ Invoke-WebRequest `
 
 In PowerShell, the last two commands are expected to raise an exception because the API returns `409` for a negative-stock adjustment attempt and for deleting a product that still has inventory. That is still a successful manual validation of the endpoint behavior.
 
+Order flow in PowerShell:
+
+```powershell
+Invoke-WebRequest `
+  -Uri "http://localhost:8080/api/v1/customers" `
+  -Method POST `
+  -ContentType "application/json" `
+  -Body '{"firstName":"Ana","lastName":"Garcia","email":"ana.orders@example.com"}'
+
+Invoke-WebRequest `
+  -Uri "http://localhost:8080/api/v1/products" `
+  -Method POST `
+  -ContentType "application/json" `
+  -Body '{"name":"Wireless Mouse","description":"Compact mouse","price":29.99,"sku":"WM-100"}'
+
+Invoke-WebRequest `
+  -Uri "http://localhost:8080/api/v1/inventories" `
+  -Method POST `
+  -ContentType "application/json" `
+  -Body '{"productId":1,"quantityAvailable":10,"minimumStock":2}'
+
+Invoke-WebRequest `
+  -Uri "http://localhost:8080/api/v1/orders" `
+  -Method POST `
+  -ContentType "application/json" `
+  -Body '{"customerId":1,"items":[{"productId":1,"quantity":3}]}'
+
+Invoke-WebRequest -Uri "http://localhost:8080/api/v1/orders"
+Invoke-WebRequest -Uri "http://localhost:8080/api/v1/orders/1"
+Invoke-WebRequest -Uri "http://localhost:8080/api/v1/products/1/inventory"
+
+Invoke-WebRequest `
+  -Uri "http://localhost:8080/api/v1/orders" `
+  -Method POST `
+  -ContentType "application/json" `
+  -Body '{"customerId":1,"items":[{"productId":1,"quantity":100}]}'
+
+Invoke-WebRequest `
+  -Uri "http://localhost:8080/api/v1/orders" `
+  -Method POST `
+  -ContentType "application/json" `
+  -Body '{"customerId":1,"items":[{"productId":999,"quantity":1}]}'
+```
+
+In PowerShell, the last two commands are expected to raise an exception because the API returns `409` for insufficient stock and `404` for a product that does not exist. That is still a successful manual validation of the endpoint behavior.
+
 ## Configuration Notes
 
 - Development profile uses `ddl-auto=update` to keep local iteration simple.
@@ -273,7 +322,7 @@ In PowerShell, the last two commands are expected to raise an exception because 
 
 ## Immediate Next Step
 
-Phase 4 should implement the `order` module following the same approach used in the previous phases:
+Phase 5 should strengthen cross-cutting exception handling and API documentation after the `order` module:
 
 - domain-based package structure
 - DTO-driven REST API
