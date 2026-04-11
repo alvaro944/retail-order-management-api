@@ -19,7 +19,7 @@ If the task touches orders, also read:
 
 ## Current Project Status
 
-Phase 6 is complete.
+Phase 7A is complete.
 
 Implemented modules:
 
@@ -30,7 +30,10 @@ Implemented modules:
 
 Next planned phase:
 
-- add Spring Security and JWT without changing the established business flow unless explicitly requested
+- split the next security work into:
+  - Phase 7B: Spring Security + JWT protection
+  - recommended branch:
+    - `codex/phase-7b-security-jwt-protection`
 
 ## Architecture Rules
 
@@ -99,6 +102,12 @@ Next planned phase:
 
 - Base path is `/api/v1`.
 - Error responses use Spring `ProblemDetail`.
+- `401`:
+  - invalid credentials on `/auth/login`
+  - missing bearer token on protected endpoints
+  - invalid or expired JWT
+- `403`:
+  - authenticated request without enough authority
 - `400`:
   - Bean Validation failures
   - request-shape or business rule violations represented as invalid request
@@ -124,6 +133,7 @@ mvn clean verify
 Useful focused test commands:
 
 ```bash
+mvn test -Dtest=AuthControllerIntegrationTest
 mvn test -Dtest=ProductControllerIntegrationTest
 mvn test -Dtest=CustomerControllerIntegrationTest
 mvn test -Dtest=InventoryControllerIntegrationTest
@@ -142,6 +152,24 @@ Documentation URLs during manual verification:
 http://localhost:8080/api/v1/swagger-ui/index.html
 http://localhost:8080/api/v1/v3/api-docs
 ```
+
+Phase 7A auth manual verification:
+
+```text
+POST http://localhost:8080/api/v1/auth/login
+GET http://localhost:8080/api/v1/auth/me
+```
+
+Phase 7A public routes:
+
+- `/api/v1/health`
+- `/api/v1/swagger-ui/**`
+- `/api/v1/v3/api-docs/**`
+- `/api/v1/auth/login`
+
+Phase 7A authenticated route:
+
+- `/api/v1/auth/me`
 
 Windows PowerShell notes:
 
@@ -182,4 +210,5 @@ For future Codex sessions, these are the most useful skills for this repository:
 - Inventory behavior: `inventory/service/InventoryServiceImpl.java`
 - Order behavior: `order/service/OrderServiceImpl.java`
 - Error contract: `common/exception/GlobalExceptionHandler.java`
+- Security contract: `common/config/SecurityConfig.java`
 - Real API expectations: integration tests under `src/test/java/com/alvaro/retail`

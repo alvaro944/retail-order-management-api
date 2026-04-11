@@ -4,7 +4,7 @@ Backend API for managing products, customers, inventory, and orders in a retail 
 
 ## Current Status
 
-Phase 6 is implemented:
+Phase 7A is implemented:
 
 - Spring Boot 3 + Java 21 + Maven bootstrap
 - Modular package structure by domain
@@ -23,8 +23,11 @@ Phase 6 is implemented:
 - Order lifecycle handling with inventory restoration during cancellation
 - OpenAPI JSON documentation for the current REST surface
 - Swagger UI for interactive API exploration
+- Spring Security base with stateless JWT authentication
+- Bootstrap user authentication endpoint at `/api/v1/auth/login`
+- Authenticated JWT self-check endpoint at `/api/v1/auth/me`
 - Validation, `404` handling, and `409` handling for duplicate SKU
-- Integration tests for the `product`, `customer`, `inventory`, and `order` modules
+- Integration tests for the `auth`, `product`, `customer`, `inventory`, and `order` modules
 
 ## Tech Stack
 
@@ -117,6 +120,8 @@ Current module endpoints:
 - `POST /orders/{id}/cancel`
 - `GET /orders`
 - `GET /orders/{id}`
+- `POST /auth/login`
+- `GET /auth/me`
 - `GET /v3/api-docs`
 - `GET /swagger-ui/index.html`
 
@@ -149,7 +154,15 @@ DB_NAME=retail_order_management
 DB_USERNAME=postgres
 DB_PASSWORD=postgres
 SERVER_PORT=8080
+APP_SECURITY_JWT_SECRET=changeit-changeit-changeit-changeit
+APP_SECURITY_JWT_ISSUER=retail-order-management-api
+APP_SECURITY_JWT_EXPIRATION_MINUTES=60
+APP_SECURITY_BOOTSTRAP_USERNAME=admin
+APP_SECURITY_BOOTSTRAP_PASSWORD=admin123
+APP_SECURITY_BOOTSTRAP_ROLE=ADMIN
 ```
+
+The bootstrap user is intended for local development and manual verification in Phase 7A. Override those defaults through environment variables outside local development.
 
 ### Run the Application
 
@@ -202,6 +215,7 @@ The test profile uses an isolated in-memory H2 database so the build can be vali
 Useful focused test commands:
 
 ```bash
+mvn test -Dtest=AuthControllerIntegrationTest
 mvn test -Dtest=ProductControllerIntegrationTest
 mvn test -Dtest=CustomerControllerIntegrationTest
 mvn test -Dtest=InventoryControllerIntegrationTest
@@ -210,7 +224,41 @@ mvn test -Dtest=OrderControllerIntegrationTest
 
 ### Manual API Smoke Test
 
-The following examples can be used after the app is running. For Phase 6 manual validation, also open Swagger UI and the OpenAPI JSON URLs listed above and confirm the `product`, `customer`, `inventory`, and `order` modules are visible.
+The following examples can be used after the app is running. For Phase 7A manual validation, open Swagger UI, open the OpenAPI JSON, obtain a JWT, and confirm `/auth/me` requires a bearer token while the business modules remain reachable.
+
+Authentication flow in PowerShell:
+
+```powershell
+$loginResponse = Invoke-RestMethod `
+  -Uri "http://localhost:8080/api/v1/auth/login" `
+  -Method POST `
+  -ContentType "application/json" `
+  -Body '{"username":"admin","password":"admin123"}'
+
+$token = $loginResponse.accessToken
+
+Invoke-RestMethod `
+  -Uri "http://localhost:8080/api/v1/auth/me" `
+  -Headers @{ Authorization = "Bearer $token" }
+```
+
+Expected negative auth checks:
+
+```powershell
+Invoke-WebRequest -Uri "http://localhost:8080/api/v1/auth/me"
+
+Invoke-WebRequest `
+  -Uri "http://localhost:8080/api/v1/auth/login" `
+  -Method POST `
+  -ContentType "application/json" `
+  -Body '{"username":"admin","password":"wrong-password"}'
+
+Invoke-WebRequest `
+  -Uri "http://localhost:8080/api/v1/auth/me" `
+  -Headers @{ Authorization = "Bearer invalid-token" }
+```
+
+In PowerShell, the three negative checks above are expected to raise an exception because the API returns `401`. That is still a successful validation of the security behavior.
 
 Product flow:
 
@@ -376,6 +424,8 @@ The API currently follows these rules:
 
 - `400` for request validation failures and invalid business-rule input
 - `404` for missing or inactive resources
+- `401` for invalid credentials, missing bearer token, or invalid/expired JWT
+- `403` for authenticated requests that are not authorized
 - `409` for duplicate resources and stock-related business conflicts
 
 Error payloads are returned as RFC 9457 `ProblemDetail` responses with a `path` property.
@@ -400,19 +450,20 @@ Error payloads are returned as RFC 9457 `ProblemDetail` responses with a `path` 
 5. Phase 4: orders
 6. Phase 5: order lifecycle cancellation
 7. Phase 6: OpenAPI and Swagger
+8. Phase 7A: Spring Security + JWT base
 
 ### Portfolio Version
 
-8. Spring Security + JWT
-9. Unit and integration testing
+9. Phase 7B: Spring Security + JWT protection
 10. Docker
 11. GitHub Actions CI
+12. Unit and integration testing hardening if needed
 
 ### Advanced Evolution
 
-12. Domain events
-13. Stronger hexagonal boundaries
-14. Microservice extraction if justified
+13. Domain events
+14. Stronger hexagonal boundaries
+15. Microservice extraction if justified
 
 ## Suggested Commit Plan
 
@@ -435,4 +486,4 @@ Error payloads are returned as RFC 9457 `ProblemDetail` responses with a `path` 
 
 ## Immediate Next Step
 
-Phase 7 should add Spring Security and JWT after the documentation phase while preserving the current REST contracts unless the phase explicitly requires otherwise.
+The next security step is Phase 7B: protect the `product`, `customer`, `inventory`, and `order` modules with the JWT base added in Phase 7A while keeping `/health`, Swagger, OpenAPI, and auth endpoints public.
