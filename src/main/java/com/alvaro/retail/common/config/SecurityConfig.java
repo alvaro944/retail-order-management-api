@@ -58,6 +58,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(authorize -> authorize
                 .requestMatchers("/health", "/swagger-ui/**", "/v3/api-docs/**", "/auth/login").permitAll()
                 .requestMatchers("/auth/me").authenticated()
+                .requestMatchers("/products/**", "/customers/**", "/inventories/**", "/orders/**").authenticated()
                 .anyRequest().permitAll()
             )
             .oauth2ResourceServer(oauth2 -> oauth2

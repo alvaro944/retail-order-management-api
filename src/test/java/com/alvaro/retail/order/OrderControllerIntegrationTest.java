@@ -14,11 +14,15 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
+import static com.alvaro.retail.support.AuthTestHelper.bearerToken;
+import static com.alvaro.retail.support.AuthTestHelper.obtainAccessToken;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -44,12 +48,24 @@ class OrderControllerIntegrationTest {
     @Autowired
     private OrderRepository orderRepository;
 
+    private String accessToken;
+
     @BeforeEach
-    void setUp() {
+    void setUp() throws Exception {
         orderRepository.deleteAll();
         inventoryRepository.deleteAll();
         productRepository.deleteAll();
         customerRepository.deleteAll();
+        accessToken = obtainAccessToken(mockMvc);
+    }
+
+    @Test
+    void getOrdersWithoutTokenReturnsUnauthorizedProblemDetail() throws Exception {
+        mockMvc.perform(get("/orders"))
+            .andExpect(status().isUnauthorized())
+            .andExpect(jsonPath("$.title").value("Unauthorized"))
+            .andExpect(jsonPath("$.detail").value("Authentication is required to access this resource"))
+            .andExpect(jsonPath("$.path").value("/orders"));
     }
 
     @Test
@@ -58,7 +74,7 @@ class OrderControllerIntegrationTest {
         Product product = persistProduct("Wireless Mouse", "Compact mouse", new BigDecimal("29.99"), "WM-100", true);
         Inventory inventory = persistInventory(product, 10, 2);
 
-        mockMvc.perform(post("/orders")
+        mockMvc.perform(authorized(post("/orders")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -70,7 +86,7 @@ class OrderControllerIntegrationTest {
                         }
                       ]
                     }
-                    """.formatted(customer.getId(), product.getId())))
+                    """.formatted(customer.getId(), product.getId()))))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.id").isNumber())
             .andExpect(jsonPath("$.customer.id").value(customer.getId()))
@@ -101,7 +117,7 @@ class OrderControllerIntegrationTest {
         persistInventory(mouse, 10, 2);
         persistInventory(keyboard, 4, 1);
 
-        mockMvc.perform(post("/orders")
+        mockMvc.perform(authorized(post("/orders")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -117,7 +133,7 @@ class OrderControllerIntegrationTest {
                         }
                       ]
                     }
-                    """.formatted(customer.getId(), mouse.getId(), keyboard.getId())))
+                    """.formatted(customer.getId(), mouse.getId(), keyboard.getId()))))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.items.length()").value(2))
             .andExpect(jsonPath("$.items[0].subtotal").value(59.98))
@@ -127,7 +143,7 @@ class OrderControllerIntegrationTest {
 
     @Test
     void createOrderWithInvalidPayloadReturnsBadRequest() throws Exception {
-        mockMvc.perform(post("/orders")
+        mockMvc.perform(authorized(post("/orders")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -137,7 +153,7 @@ class OrderControllerIntegrationTest {
                         }
                       ]
                     }
-                    """))
+                    """)))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.title").value("Bad Request"))
             .andExpect(jsonPath("$.detail").value("Request validation failed"))
@@ -150,14 +166,14 @@ class OrderControllerIntegrationTest {
     void createOrderWithoutItemsReturnsBadRequest() throws Exception {
         Customer customer = persistCustomer("Ana", "Garcia", "ana@example.com", true);
 
-        mockMvc.perform(post("/orders")
+        mockMvc.perform(authorized(post("/orders")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
                       "customerId": %d,
                       "items": []
                     }
-                    """.formatted(customer.getId())))
+                    """.formatted(customer.getId()))))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.errors.items").value("items must not be empty"));
     }
@@ -167,7 +183,7 @@ class OrderControllerIntegrationTest {
         Product product = persistProduct("Wireless Mouse", "Compact mouse", new BigDecimal("29.99"), "WM-100", true);
         persistInventory(product, 10, 2);
 
-        mockMvc.perform(post("/orders")
+        mockMvc.perform(authorized(post("/orders")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -179,7 +195,7 @@ class OrderControllerIntegrationTest {
                         }
                       ]
                     }
-                    """.formatted(product.getId())))
+                    """.formatted(product.getId()))))
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.detail").value("Customer with id 999 was not found"));
     }
@@ -190,7 +206,7 @@ class OrderControllerIntegrationTest {
         Product product = persistProduct("Wireless Mouse", "Compact mouse", new BigDecimal("29.99"), "WM-100", true);
         persistInventory(product, 10, 2);
 
-        mockMvc.perform(post("/orders")
+        mockMvc.perform(authorized(post("/orders")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -202,7 +218,7 @@ class OrderControllerIntegrationTest {
                         }
                       ]
                     }
-                    """.formatted(customer.getId(), product.getId())))
+                    """.formatted(customer.getId(), product.getId()))))
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.detail").value("Customer with id " + customer.getId() + " was not found"));
     }
@@ -211,7 +227,7 @@ class OrderControllerIntegrationTest {
     void createOrderReturnsNotFoundForNonExistentProduct() throws Exception {
         Customer customer = persistCustomer("Ana", "Garcia", "ana@example.com", true);
 
-        mockMvc.perform(post("/orders")
+        mockMvc.perform(authorized(post("/orders")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -223,7 +239,7 @@ class OrderControllerIntegrationTest {
                         }
                       ]
                     }
-                    """.formatted(customer.getId())))
+                    """.formatted(customer.getId()))))
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.detail").value("Product with id 999 was not found"));
     }
@@ -233,7 +249,7 @@ class OrderControllerIntegrationTest {
         Customer customer = persistCustomer("Ana", "Garcia", "ana@example.com", true);
         Product product = persistProduct("Wireless Mouse", "Compact mouse", new BigDecimal("29.99"), "WM-100", false);
 
-        mockMvc.perform(post("/orders")
+        mockMvc.perform(authorized(post("/orders")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -245,7 +261,7 @@ class OrderControllerIntegrationTest {
                         }
                       ]
                     }
-                    """.formatted(customer.getId(), product.getId())))
+                    """.formatted(customer.getId(), product.getId()))))
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.detail").value("Product with id " + product.getId() + " was not found"));
     }
@@ -255,7 +271,7 @@ class OrderControllerIntegrationTest {
         Customer customer = persistCustomer("Ana", "Garcia", "ana@example.com", true);
         Product product = persistProduct("Wireless Mouse", "Compact mouse", new BigDecimal("29.99"), "WM-100", true);
 
-        mockMvc.perform(post("/orders")
+        mockMvc.perform(authorized(post("/orders")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -267,7 +283,7 @@ class OrderControllerIntegrationTest {
                         }
                       ]
                     }
-                    """.formatted(customer.getId(), product.getId())))
+                    """.formatted(customer.getId(), product.getId()))))
             .andExpect(status().isConflict())
             .andExpect(jsonPath("$.detail").value("Product with id " + product.getId() + " does not have available stock"));
     }
@@ -278,7 +294,7 @@ class OrderControllerIntegrationTest {
         Product product = persistProduct("Wireless Mouse", "Compact mouse", new BigDecimal("29.99"), "WM-100", true);
         persistInventory(product, 2, 2);
 
-        mockMvc.perform(post("/orders")
+        mockMvc.perform(authorized(post("/orders")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -290,7 +306,7 @@ class OrderControllerIntegrationTest {
                         }
                       ]
                     }
-                    """.formatted(customer.getId(), product.getId())))
+                    """.formatted(customer.getId(), product.getId()))))
             .andExpect(status().isConflict())
             .andExpect(jsonPath("$.detail").value("Product with id " + product.getId() + " does not have enough stock"));
     }
@@ -301,7 +317,7 @@ class OrderControllerIntegrationTest {
         Product product = persistProduct("Wireless Mouse", "Compact mouse", new BigDecimal("29.99"), "WM-100", true);
         persistInventory(product, 10, 2);
 
-        mockMvc.perform(post("/orders")
+        mockMvc.perform(authorized(post("/orders")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -317,7 +333,7 @@ class OrderControllerIntegrationTest {
                         }
                       ]
                     }
-                    """.formatted(customer.getId(), product.getId(), product.getId())))
+                    """.formatted(customer.getId(), product.getId(), product.getId()))))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.detail").value("Product with id " + product.getId() + " is duplicated in the order"));
     }
@@ -328,7 +344,7 @@ class OrderControllerIntegrationTest {
         Product product = persistProduct("Wireless Mouse", "Compact mouse", new BigDecimal("29.99"), "WM-100", true);
         persistInventory(product, 10, 2);
 
-        MvcResult createResult = mockMvc.perform(post("/orders")
+        MvcResult createResult = mockMvc.perform(authorized(post("/orders")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -340,13 +356,13 @@ class OrderControllerIntegrationTest {
                         }
                       ]
                     }
-                    """.formatted(customer.getId(), product.getId())))
+                    """.formatted(customer.getId(), product.getId()))))
             .andExpect(status().isCreated())
             .andReturn();
 
         Number orderId = com.jayway.jsonpath.JsonPath.read(createResult.getResponse().getContentAsString(), "$.id");
 
-        mockMvc.perform(get("/orders/{id}", orderId.longValue()))
+        mockMvc.perform(authorized(get("/orders/{id}", orderId.longValue())))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.id").value(orderId.longValue()))
             .andExpect(jsonPath("$.customer.email").value("ana@example.com"))
@@ -356,7 +372,7 @@ class OrderControllerIntegrationTest {
 
     @Test
     void getOrderByIdReturnsNotFoundWhenOrderDoesNotExist() throws Exception {
-        mockMvc.perform(get("/orders/{id}", 999L))
+        mockMvc.perform(authorized(get("/orders/{id}", 999L)))
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.detail").value("Order with id 999 was not found"));
     }
@@ -369,7 +385,7 @@ class OrderControllerIntegrationTest {
 
         Long orderId = createOrder(customer.getId(), product.getId(), 3);
 
-        mockMvc.perform(post("/orders/{id}/cancel", orderId))
+        mockMvc.perform(authorized(post("/orders/{id}/cancel", orderId)))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.id").value(orderId))
             .andExpect(jsonPath("$.status").value("CANCELLED"))
@@ -382,7 +398,7 @@ class OrderControllerIntegrationTest {
         Assertions.assertEquals(10, restoredInventory.getQuantityAvailable());
         Assertions.assertEquals("CANCELLED", orderRepository.findById(orderId).orElseThrow().getStatus().name());
 
-        mockMvc.perform(get("/orders/{id}", orderId))
+        mockMvc.perform(authorized(get("/orders/{id}", orderId)))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.status").value("CANCELLED"));
     }
@@ -395,10 +411,10 @@ class OrderControllerIntegrationTest {
 
         Long orderId = createOrder(customer.getId(), product.getId(), 3);
 
-        mockMvc.perform(post("/orders/{id}/cancel", orderId))
+        mockMvc.perform(authorized(post("/orders/{id}/cancel", orderId)))
             .andExpect(status().isOk());
 
-        mockMvc.perform(post("/orders/{id}/cancel", orderId))
+        mockMvc.perform(authorized(post("/orders/{id}/cancel", orderId)))
             .andExpect(status().isConflict())
             .andExpect(jsonPath("$.detail").value("Order with id " + orderId + " is already cancelled"));
 
@@ -408,7 +424,7 @@ class OrderControllerIntegrationTest {
 
     @Test
     void cancelOrderReturnsNotFoundWhenOrderDoesNotExist() throws Exception {
-        mockMvc.perform(post("/orders/{id}/cancel", 999L))
+        mockMvc.perform(authorized(post("/orders/{id}/cancel", 999L)))
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.detail").value("Order with id 999 was not found"));
     }
@@ -421,7 +437,7 @@ class OrderControllerIntegrationTest {
         persistInventory(mouse, 10, 2);
         persistInventory(keyboard, 5, 1);
 
-        mockMvc.perform(post("/orders")
+        mockMvc.perform(authorized(post("/orders")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -433,12 +449,12 @@ class OrderControllerIntegrationTest {
                         }
                       ]
                     }
-                    """.formatted(customer.getId(), mouse.getId())))
+                    """.formatted(customer.getId(), mouse.getId()))))
             .andExpect(status().isCreated());
 
         Thread.sleep(20);
 
-        mockMvc.perform(post("/orders")
+        mockMvc.perform(authorized(post("/orders")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -450,10 +466,10 @@ class OrderControllerIntegrationTest {
                         }
                       ]
                     }
-                    """.formatted(customer.getId(), keyboard.getId())))
+                    """.formatted(customer.getId(), keyboard.getId()))))
             .andExpect(status().isCreated());
 
-        mockMvc.perform(get("/orders"))
+        mockMvc.perform(authorized(get("/orders")))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.length()").value(2))
             .andExpect(jsonPath("$[0].items[0].productSku").value("MK-200"))
@@ -461,7 +477,7 @@ class OrderControllerIntegrationTest {
     }
 
     private Long createOrder(Long customerId, Long productId, int quantity) throws Exception {
-        MvcResult createResult = mockMvc.perform(post("/orders")
+        MvcResult createResult = mockMvc.perform(authorized(post("/orders")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -473,12 +489,16 @@ class OrderControllerIntegrationTest {
                         }
                       ]
                     }
-                    """.formatted(customerId, productId, quantity)))
+                    """.formatted(customerId, productId, quantity))))
             .andExpect(status().isCreated())
             .andReturn();
 
         Number orderId = com.jayway.jsonpath.JsonPath.read(createResult.getResponse().getContentAsString(), "$.id");
         return orderId.longValue();
+    }
+
+    private MockHttpServletRequestBuilder authorized(MockHttpServletRequestBuilder requestBuilder) {
+        return requestBuilder.header(HttpHeaders.AUTHORIZATION, bearerToken(accessToken));
     }
 
     private Customer persistCustomer(String firstName, String lastName, String email, boolean active) {
