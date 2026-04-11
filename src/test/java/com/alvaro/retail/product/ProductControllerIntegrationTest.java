@@ -9,13 +9,17 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 
+import static com.alvaro.retail.support.AuthTestHelper.bearerToken;
+import static com.alvaro.retail.support.AuthTestHelper.obtainAccessToken;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -37,15 +41,27 @@ class ProductControllerIntegrationTest {
     @Autowired
     private InventoryRepository inventoryRepository;
 
+    private String accessToken;
+
     @BeforeEach
-    void setUp() {
+    void setUp() throws Exception {
         inventoryRepository.deleteAll();
         productRepository.deleteAll();
+        accessToken = obtainAccessToken(mockMvc);
+    }
+
+    @Test
+    void getProductsWithoutTokenReturnsUnauthorizedProblemDetail() throws Exception {
+        mockMvc.perform(get("/products"))
+            .andExpect(status().isUnauthorized())
+            .andExpect(jsonPath("$.title").value("Unauthorized"))
+            .andExpect(jsonPath("$.detail").value("Authentication is required to access this resource"))
+            .andExpect(jsonPath("$.path").value("/products"));
     }
 
     @Test
     void createProductReturnsCreatedProduct() throws Exception {
-        mockMvc.perform(post("/products")
+        mockMvc.perform(authorized(post("/products")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -54,7 +70,7 @@ class ProductControllerIntegrationTest {
                       "price": 29.99,
                       "sku": "WM-100"
                     }
-                    """))
+                    """)))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.id").isNumber())
             .andExpect(jsonPath("$.name").value("Wireless Mouse"))
@@ -68,7 +84,7 @@ class ProductControllerIntegrationTest {
 
     @Test
     void createProductWithInvalidPayloadReturnsBadRequest() throws Exception {
-        mockMvc.perform(post("/products")
+        mockMvc.perform(authorized(post("/products")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -77,7 +93,7 @@ class ProductControllerIntegrationTest {
                       "price": 0,
                       "sku": ""
                     }
-                    """))
+                    """)))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.title").value("Bad Request"))
             .andExpect(jsonPath("$.detail").value("Request validation failed"))
@@ -90,7 +106,7 @@ class ProductControllerIntegrationTest {
     void createProductWithDuplicateSkuReturnsConflict() throws Exception {
         persistProduct("Keyboard", "Mechanical keyboard", new BigDecimal("79.99"), "KB-100", true);
 
-        mockMvc.perform(post("/products")
+        mockMvc.perform(authorized(post("/products")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -99,7 +115,7 @@ class ProductControllerIntegrationTest {
                       "price": 89.99,
                       "sku": "KB-100"
                     }
-                    """))
+                    """)))
             .andExpect(status().isConflict())
             .andExpect(jsonPath("$.title").value("Conflict"))
             .andExpect(jsonPath("$.detail").value("Product with sku KB-100 already exists"));
@@ -109,7 +125,7 @@ class ProductControllerIntegrationTest {
     void getProductByIdReturnsActiveProduct() throws Exception {
         Product product = persistProduct("Monitor", "27 inch monitor", new BigDecimal("199.99"), "MN-100", true);
 
-        mockMvc.perform(get("/products/{id}", product.getId()))
+        mockMvc.perform(authorized(get("/products/{id}", product.getId())))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.id").value(product.getId()))
             .andExpect(jsonPath("$.name").value("Monitor"))
@@ -120,7 +136,7 @@ class ProductControllerIntegrationTest {
     void getProductByIdReturnsNotFoundForInactiveProduct() throws Exception {
         Product product = persistProduct("Archived", "Inactive product", new BigDecimal("10.00"), "AR-100", false);
 
-        mockMvc.perform(get("/products/{id}", product.getId()))
+        mockMvc.perform(authorized(get("/products/{id}", product.getId())))
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.detail").value("Product with id " + product.getId() + " was not found"));
     }
@@ -131,7 +147,7 @@ class ProductControllerIntegrationTest {
         persistProduct("Alpha Item", "First alphabetically", new BigDecimal("11.00"), "SKU-1", true);
         persistProduct("Hidden Item", "Inactive", new BigDecimal("12.00"), "SKU-2", false);
 
-        mockMvc.perform(get("/products"))
+        mockMvc.perform(authorized(get("/products")))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.length()").value(2))
             .andExpect(jsonPath("$[0].name").value("Alpha Item"))
@@ -142,7 +158,7 @@ class ProductControllerIntegrationTest {
     void updateProductReplacesEditableFieldsAndKeepsProductActive() throws Exception {
         Product product = persistProduct("Laptop", "Old description", new BigDecimal("999.99"), "LP-100", true);
 
-        mockMvc.perform(put("/products/{id}", product.getId())
+        mockMvc.perform(authorized(put("/products/{id}", product.getId())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -151,7 +167,7 @@ class ProductControllerIntegrationTest {
                       "price": 1099.99,
                       "sku": "LP-200"
                     }
-                    """))
+                    """)))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.id").value(product.getId()))
             .andExpect(jsonPath("$.name").value("Laptop Pro"))
@@ -168,7 +184,7 @@ class ProductControllerIntegrationTest {
 
         Thread.sleep(20);
 
-        mockMvc.perform(put("/products/{id}", product.getId())
+        mockMvc.perform(authorized(put("/products/{id}", product.getId())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -177,7 +193,7 @@ class ProductControllerIntegrationTest {
                       "price": 319.99,
                       "sku": "CM-101"
                     }
-                    """))
+                    """)))
             .andExpect(status().isOk())
             .andExpect(result -> {
                 String content = result.getResponse().getContentAsString();
@@ -194,7 +210,7 @@ class ProductControllerIntegrationTest {
         Product firstProduct = persistProduct("Phone", "Phone", new BigDecimal("499.99"), "PH-100", true);
         persistProduct("Tablet", "Tablet", new BigDecimal("599.99"), "TB-100", true);
 
-        mockMvc.perform(put("/products/{id}", firstProduct.getId())
+        mockMvc.perform(authorized(put("/products/{id}", firstProduct.getId())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -203,7 +219,7 @@ class ProductControllerIntegrationTest {
                       "price": 499.99,
                       "sku": "TB-100"
                     }
-                    """))
+                    """)))
             .andExpect(status().isConflict())
             .andExpect(jsonPath("$.detail").value("Product with sku TB-100 already exists"));
     }
@@ -212,13 +228,13 @@ class ProductControllerIntegrationTest {
     void deleteProductPerformsSoftDeleteAndHidesProductFromReads() throws Exception {
         Product product = persistProduct("Speaker", "Portable speaker", new BigDecimal("59.99"), "SP-100", true);
 
-        mockMvc.perform(delete("/products/{id}", product.getId()))
+        mockMvc.perform(authorized(delete("/products/{id}", product.getId())))
             .andExpect(status().isNoContent());
 
-        mockMvc.perform(get("/products/{id}", product.getId()))
+        mockMvc.perform(authorized(get("/products/{id}", product.getId())))
             .andExpect(status().isNotFound());
 
-        mockMvc.perform(get("/products"))
+        mockMvc.perform(authorized(get("/products")))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.length()").value(0));
     }
@@ -228,9 +244,13 @@ class ProductControllerIntegrationTest {
         Product product = persistProduct("Console", "Gaming console", new BigDecimal("399.99"), "CON-100", true);
         persistInventory(product, 4, 1);
 
-        mockMvc.perform(delete("/products/{id}", product.getId()))
+        mockMvc.perform(authorized(delete("/products/{id}", product.getId())))
             .andExpect(status().isConflict())
             .andExpect(jsonPath("$.detail").value("Product with id " + product.getId() + " has inventory and cannot be deleted"));
+    }
+
+    private MockHttpServletRequestBuilder authorized(MockHttpServletRequestBuilder requestBuilder) {
+        return requestBuilder.header(HttpHeaders.AUTHORIZATION, bearerToken(accessToken));
     }
 
     private Product persistProduct(String name, String description, BigDecimal price, String sku, boolean active) {

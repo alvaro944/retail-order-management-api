@@ -19,3 +19,14 @@ server:
   port: ${SERVER_PORT:8080}
   servlet:
     context-path: /api/v1
+
+app:
+  security:
+    jwt:
+      secret: ${APP_SECURITY_JWT_SECRET:changeit-changeit-changeit-changeit}
+      issuer: ${APP_SECURITY_JWT_ISSUER:retail-order-management-api}
+      expiration-minutes: ${APP_SECURITY_JWT_EXPIRATION_MINUTES:60}
+    bootstrap-user:
+      username: ${APP_SECURITY_BOOTSTRAP_USERNAME:admin}
+      password: ${APP_SECURITY_BOOTSTRAP_PASSWORD:admin123}
+      role: ${APP_SECURITY_BOOTSTRAP_ROLE:ADMIN}

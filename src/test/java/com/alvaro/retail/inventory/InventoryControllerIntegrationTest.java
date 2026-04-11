@@ -11,10 +11,14 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
+import static com.alvaro.retail.support.AuthTestHelper.bearerToken;
+import static com.alvaro.retail.support.AuthTestHelper.obtainAccessToken;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -36,17 +40,29 @@ class InventoryControllerIntegrationTest {
     @Autowired
     private InventoryRepository inventoryRepository;
 
+    private String accessToken;
+
     @BeforeEach
-    void setUp() {
+    void setUp() throws Exception {
         inventoryRepository.deleteAll();
         productRepository.deleteAll();
+        accessToken = obtainAccessToken(mockMvc);
+    }
+
+    @Test
+    void getInventoriesWithoutTokenReturnsUnauthorizedProblemDetail() throws Exception {
+        mockMvc.perform(get("/inventories"))
+            .andExpect(status().isUnauthorized())
+            .andExpect(jsonPath("$.title").value("Unauthorized"))
+            .andExpect(jsonPath("$.detail").value("Authentication is required to access this resource"))
+            .andExpect(jsonPath("$.path").value("/inventories"));
     }
 
     @Test
     void createInventoryReturnsCreatedInventory() throws Exception {
         Product product = persistProduct("Mouse", "Compact mouse", new BigDecimal("29.99"), "MOU-100", true);
 
-        mockMvc.perform(post("/inventories")
+        mockMvc.perform(authorized(post("/inventories")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -54,7 +70,7 @@ class InventoryControllerIntegrationTest {
                       "quantityAvailable": 25,
                       "minimumStock": 5
                     }
-                    """.formatted(product.getId())))
+                    """.formatted(product.getId()))))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.id").isNumber())
             .andExpect(jsonPath("$.product.id").value(product.getId()))
@@ -67,14 +83,14 @@ class InventoryControllerIntegrationTest {
 
     @Test
     void createInventoryWithInvalidPayloadReturnsBadRequest() throws Exception {
-        mockMvc.perform(post("/inventories")
+        mockMvc.perform(authorized(post("/inventories")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
                       "quantityAvailable": -1,
                       "minimumStock": -2
                     }
-                    """))
+                    """)))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.title").value("Bad Request"))
             .andExpect(jsonPath("$.detail").value("Request validation failed"))
@@ -85,7 +101,7 @@ class InventoryControllerIntegrationTest {
 
     @Test
     void createInventoryReturnsNotFoundForNonExistentProduct() throws Exception {
-        mockMvc.perform(post("/inventories")
+        mockMvc.perform(authorized(post("/inventories")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -93,7 +109,7 @@ class InventoryControllerIntegrationTest {
                       "quantityAvailable": 5,
                       "minimumStock": 1
                     }
-                    """))
+                    """)))
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.detail").value("Product with id 999 was not found"));
     }
@@ -102,7 +118,7 @@ class InventoryControllerIntegrationTest {
     void createInventoryReturnsNotFoundForInactiveProduct() throws Exception {
         Product product = persistProduct("Archived", "Inactive", new BigDecimal("10.00"), "ARC-100", false);
 
-        mockMvc.perform(post("/inventories")
+        mockMvc.perform(authorized(post("/inventories")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -110,7 +126,7 @@ class InventoryControllerIntegrationTest {
                       "quantityAvailable": 5,
                       "minimumStock": 1
                     }
-                    """.formatted(product.getId())))
+                    """.formatted(product.getId()))))
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.detail").value("Product with id " + product.getId() + " was not found"));
     }
@@ -120,7 +136,7 @@ class InventoryControllerIntegrationTest {
         Product product = persistProduct("Keyboard", "Mechanical", new BigDecimal("79.99"), "KEY-100", true);
         persistInventory(product, 12, 3);
 
-        mockMvc.perform(post("/inventories")
+        mockMvc.perform(authorized(post("/inventories")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -128,7 +144,7 @@ class InventoryControllerIntegrationTest {
                       "quantityAvailable": 7,
                       "minimumStock": 2
                     }
-                    """.formatted(product.getId())))
+                    """.formatted(product.getId()))))
             .andExpect(status().isConflict())
             .andExpect(jsonPath("$.detail").value("Inventory for product with id " + product.getId() + " already exists"));
     }
@@ -138,7 +154,7 @@ class InventoryControllerIntegrationTest {
         Product product = persistProduct("Monitor", "27 inch", new BigDecimal("199.99"), "MON-100", true);
         Inventory inventory = persistInventory(product, 8, 2);
 
-        mockMvc.perform(get("/inventories/{id}", inventory.getId()))
+        mockMvc.perform(authorized(get("/inventories/{id}", inventory.getId())))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.id").value(inventory.getId()))
             .andExpect(jsonPath("$.product.id").value(product.getId()))
@@ -151,7 +167,7 @@ class InventoryControllerIntegrationTest {
         Product product = persistProduct("Dock", "USB-C dock", new BigDecimal("89.99"), "DOC-100", true);
         Inventory inventory = persistInventory(product, 6, 1);
 
-        mockMvc.perform(get("/products/{productId}/inventory", product.getId()))
+        mockMvc.perform(authorized(get("/products/{productId}/inventory", product.getId())))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.id").value(inventory.getId()))
             .andExpect(jsonPath("$.product.sku").value("DOC-100"))
@@ -168,7 +184,7 @@ class InventoryControllerIntegrationTest {
         persistInventory(alphaProduct, 11, 2);
         persistInventory(hiddenProduct, 12, 3);
 
-        mockMvc.perform(get("/inventories"))
+        mockMvc.perform(authorized(get("/inventories")))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.length()").value(2))
             .andExpect(jsonPath("$[0].product.name").value("Alpha Item"))
@@ -180,13 +196,13 @@ class InventoryControllerIntegrationTest {
         Product product = persistProduct("Laptop Stand", "Aluminium", new BigDecimal("39.99"), "LST-100", true);
         Inventory inventory = persistInventory(product, 15, 4);
 
-        mockMvc.perform(put("/inventories/{id}", inventory.getId())
+        mockMvc.perform(authorized(put("/inventories/{id}", inventory.getId())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
                       "minimumStock": 9
                     }
-                    """))
+                    """)))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.id").value(inventory.getId()))
             .andExpect(jsonPath("$.quantityAvailable").value(15))
@@ -201,13 +217,13 @@ class InventoryControllerIntegrationTest {
 
         Thread.sleep(20);
 
-        mockMvc.perform(put("/inventories/{id}", inventory.getId())
+        mockMvc.perform(authorized(put("/inventories/{id}", inventory.getId())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
                       "minimumStock": 7
                     }
-                    """))
+                    """)))
             .andExpect(status().isOk())
             .andExpect(result -> {
                 String content = result.getResponse().getContentAsString();
@@ -226,13 +242,13 @@ class InventoryControllerIntegrationTest {
 
         Thread.sleep(20);
 
-        mockMvc.perform(put("/inventories/{id}", inventory.getId())
+        mockMvc.perform(authorized(put("/inventories/{id}", inventory.getId())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
                       "minimumStock": 6
                     }
-                    """))
+                    """)))
             .andExpect(status().isOk())
             .andExpect(result -> {
                 String content = result.getResponse().getContentAsString();
@@ -244,13 +260,13 @@ class InventoryControllerIntegrationTest {
 
         Thread.sleep(20);
 
-        mockMvc.perform(put("/inventories/{id}", inventory.getId())
+        mockMvc.perform(authorized(put("/inventories/{id}", inventory.getId())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
                       "minimumStock": 6
                     }
-                    """))
+                    """)))
             .andExpect(status().isOk())
             .andExpect(result -> {
                 String content = result.getResponse().getContentAsString();
@@ -267,14 +283,14 @@ class InventoryControllerIntegrationTest {
         Product product = persistProduct("Phone", "Smartphone", new BigDecimal("499.99"), "PHN-100", true);
         Inventory inventory = persistInventory(product, 20, 2);
 
-        mockMvc.perform(patch("/inventories/{id}/adjust", inventory.getId())
+        mockMvc.perform(authorized(patch("/inventories/{id}/adjust", inventory.getId())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
                       "type": "INCREASE",
                       "quantity": 5
                     }
-                    """))
+                    """)))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.quantityAvailable").value(25))
             .andExpect(jsonPath("$.minimumStock").value(2));
@@ -285,14 +301,14 @@ class InventoryControllerIntegrationTest {
         Product product = persistProduct("Tablet", "Tablet", new BigDecimal("299.99"), "TAB-100", true);
         Inventory inventory = persistInventory(product, 20, 2);
 
-        mockMvc.perform(patch("/inventories/{id}/adjust", inventory.getId())
+        mockMvc.perform(authorized(patch("/inventories/{id}/adjust", inventory.getId())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
                       "type": "DECREASE",
                       "quantity": 6
                     }
-                    """))
+                    """)))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.quantityAvailable").value(14));
     }
@@ -302,14 +318,14 @@ class InventoryControllerIntegrationTest {
         Product product = persistProduct("Camera", "Mirrorless", new BigDecimal("799.99"), "CAM-100", true);
         Inventory inventory = persistInventory(product, 3, 1);
 
-        mockMvc.perform(patch("/inventories/{id}/adjust", inventory.getId())
+        mockMvc.perform(authorized(patch("/inventories/{id}/adjust", inventory.getId())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
                       "type": "DECREASE",
                       "quantity": 5
                     }
-                    """))
+                    """)))
             .andExpect(status().isConflict())
             .andExpect(jsonPath("$.detail").value("Inventory with id " + inventory.getId() + " cannot be reduced below zero"));
     }
@@ -322,14 +338,14 @@ class InventoryControllerIntegrationTest {
 
         Thread.sleep(20);
 
-        mockMvc.perform(patch("/inventories/{id}/adjust", inventory.getId())
+        mockMvc.perform(authorized(patch("/inventories/{id}/adjust", inventory.getId())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
                       "type": "INCREASE",
                       "quantity": 1
                     }
-                    """))
+                    """)))
             .andExpect(status().isOk())
             .andExpect(result -> {
                 String content = result.getResponse().getContentAsString();
@@ -339,6 +355,10 @@ class InventoryControllerIntegrationTest {
                     throw new AssertionError("updatedAt should be after createdAt");
                 }
             });
+    }
+
+    private MockHttpServletRequestBuilder authorized(MockHttpServletRequestBuilder requestBuilder) {
+        return requestBuilder.header(HttpHeaders.AUTHORIZATION, bearerToken(accessToken));
     }
 
     private Product persistProduct(String name, String description, BigDecimal price, String sku, boolean active) {

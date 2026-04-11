@@ -8,3 +8,14 @@ spring:
     hibernate:
       ddl-auto: create-drop
     show-sql: false
+
+app:
+  security:
+    jwt:
+      secret: test-secret-key-for-jwt-phase-7a-123456
+      issuer: retail-order-management-api-test
+      expiration-minutes: 60
+    bootstrap-user:
+      username: admin
+      password: admin123
+      role: ADMIN
