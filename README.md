@@ -42,6 +42,7 @@ Phase 7B is implemented:
 - Lombok
 - Springdoc OpenAPI + Swagger UI
 - H2 for test profile
+- Docker and Docker Compose for local container workflow
 
 ## Project Structure
 
@@ -151,6 +152,7 @@ For future coding chats, see `AGENTS.md`. It documents:
 - JDK 21
 - Maven 3.9+
 - PostgreSQL 15+ for the `dev` profile
+- Docker Desktop or Docker Engine with Docker Compose for the containerized workflow
 
 ### Environment Variables
 
@@ -186,6 +188,49 @@ mvn "-Dspring-boot.run.profiles=test" "-Dspring-boot.run.useTestClasspath=true" 
 ```
 
 If you run the packaged jar, use the `dev` profile. The `test` profile is intended for automated tests and local manual checks through Maven.
+
+### Run with Docker Compose
+
+The repository now includes a multi-stage `Dockerfile` and a local `docker-compose.yml` stack for Phase 8.
+
+Build and start the stack:
+
+```bash
+docker compose up --build
+```
+
+Start it in detached mode:
+
+```bash
+docker compose up --build -d
+```
+
+Stop the stack:
+
+```bash
+docker compose down
+```
+
+The PostgreSQL data is stored in the named volume `postgres-data` so local data survives container restarts.
+
+The Docker stack uses the same `dev` profile and the same environment variables already supported by the application:
+
+```bash
+DB_HOST=db
+DB_PORT=5432
+DB_NAME=retail_order_management
+DB_USERNAME=postgres
+DB_PASSWORD=postgres
+SERVER_PORT=8080
+APP_SECURITY_JWT_SECRET=changeit-changeit-changeit-changeit
+APP_SECURITY_JWT_ISSUER=retail-order-management-api
+APP_SECURITY_JWT_EXPIRATION_MINUTES=60
+APP_SECURITY_BOOTSTRAP_USERNAME=admin
+APP_SECURITY_BOOTSTRAP_PASSWORD=admin123
+APP_SECURITY_BOOTSTRAP_ROLE=ADMIN
+```
+
+Inside Docker Compose, `DB_HOST` is fixed to the `db` service. The remaining values can be overridden from your shell or a local `.env` file before running `docker compose up`.
 
 On Windows PowerShell, `curl` is usually an alias for `Invoke-WebRequest`, not the Unix `curl` CLI. That means flags such as `-X`, `-H`, and `-d` will not behave the same way unless you call `curl.exe` explicitly. For PowerShell-first smoke tests, prefer `Invoke-WebRequest` with `-Method`, `-ContentType`, and `-Body`.
 
@@ -234,6 +279,8 @@ mvn test -Dtest=OrderControllerIntegrationTest
 ### Manual API Smoke Test
 
 The following examples can be used after the app is running. For Phase 7B manual validation, open Swagger UI, open the OpenAPI JSON, obtain a JWT, confirm the business modules require authentication, and verify the same routes work when a bearer token is provided.
+
+For Phase 8, the same flow should also work unchanged against the Dockerized stack.
 
 Authentication flow in PowerShell:
 
@@ -290,6 +337,44 @@ Open OpenAPI JSON: http://localhost:8080/api/v1/v3/api-docs
 
 Use the `Authorize` button in Swagger UI with `Bearer <token>`, then confirm protected operations under `product`, `customer`, `inventory`, and `order` execute successfully.
 
+### Docker Compose Authenticated Smoke Test
+
+Once `docker compose up --build` is running, the same URLs are available from the host:
+
+```text
+http://localhost:8080/api/v1/health
+http://localhost:8080/api/v1/auth/login
+http://localhost:8080/api/v1/auth/me
+http://localhost:8080/api/v1/swagger-ui/index.html
+http://localhost:8080/api/v1/v3/api-docs
+```
+
+PowerShell example against the Dockerized stack:
+
+```powershell
+$loginResponse = Invoke-RestMethod `
+  -Uri "http://localhost:8080/api/v1/auth/login" `
+  -Method POST `
+  -ContentType "application/json" `
+  -Body '{"username":"admin","password":"admin123"}'
+
+$token = $loginResponse.accessToken
+
+Invoke-RestMethod -Uri "http://localhost:8080/api/v1/health"
+
+Invoke-RestMethod `
+  -Uri "http://localhost:8080/api/v1/auth/me" `
+  -Headers @{ Authorization = "Bearer $token" }
+
+Invoke-RestMethod `
+  -Uri "http://localhost:8080/api/v1/products" `
+  -Headers @{ Authorization = "Bearer $token" }
+
+Invoke-WebRequest -Uri "http://localhost:8080/api/v1/products"
+```
+
+In the last command above, `Invoke-WebRequest` is expected to raise an exception because the API returns `401` without a bearer token.
+
 ## Error Semantics
 
 The API currently follows these rules:
@@ -327,7 +412,7 @@ Error payloads are returned as RFC 9457 `ProblemDetail` responses with a `path` 
 
 ### Portfolio Version
 
-10. Docker
+10. Docker packaging and local container workflow
 11. GitHub Actions CI
 12. Unit and integration testing hardening if needed
 
@@ -358,4 +443,4 @@ Error payloads are returned as RFC 9457 `ProblemDetail` responses with a `path` 
 
 ## Immediate Next Step
 
-The next planned step after Phase 7B is Docker packaging and local container workflow support.
+The next planned step after Phase 8 is GitHub Actions CI.

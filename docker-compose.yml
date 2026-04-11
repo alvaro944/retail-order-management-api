@@ -1,0 +1,46 @@
+services:
+  db:
+    image: postgres:15
+    container_name: retail-order-management-db
+    environment:
+      POSTGRES_DB: ${DB_NAME:-retail_order_management}
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-postgres} -d ${DB_NAME:-retail_order_management}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: retail-order-management-api
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SERVER_PORT: ${SERVER_PORT:-8080}
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-retail_order_management}
+      DB_USERNAME: ${DB_USERNAME:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      APP_SECURITY_JWT_SECRET: ${APP_SECURITY_JWT_SECRET:-changeit-changeit-changeit-changeit}
+      APP_SECURITY_JWT_ISSUER: ${APP_SECURITY_JWT_ISSUER:-retail-order-management-api}
+      APP_SECURITY_JWT_EXPIRATION_MINUTES: ${APP_SECURITY_JWT_EXPIRATION_MINUTES:-60}
+      APP_SECURITY_BOOTSTRAP_USERNAME: ${APP_SECURITY_BOOTSTRAP_USERNAME:-admin}
+      APP_SECURITY_BOOTSTRAP_PASSWORD: ${APP_SECURITY_BOOTSTRAP_PASSWORD:-admin123}
+      APP_SECURITY_BOOTSTRAP_ROLE: ${APP_SECURITY_BOOTSTRAP_ROLE:-ADMIN}
+    ports:
+      - "${SERVER_PORT:-8080}:8080"
+
+volumes:
+  postgres-data:

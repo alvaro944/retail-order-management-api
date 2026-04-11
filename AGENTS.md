@@ -19,7 +19,7 @@ If the task touches orders, also read:
 
 ## Current Project Status
 
-Phase 7B is complete.
+Phase 8 is complete.
 
 Implemented modules:
 
@@ -30,7 +30,7 @@ Implemented modules:
 
 Next planned phase:
 
-- Docker packaging and local container workflow
+- GitHub Actions CI
 
 ## Architecture Rules
 
@@ -150,6 +150,13 @@ http://localhost:8080/api/v1/swagger-ui/index.html
 http://localhost:8080/api/v1/v3/api-docs
 ```
 
+Docker local workflow:
+
+```bash
+docker compose up --build
+docker compose down
+```
+
 Phase 7B auth manual verification:
 
 ```text
@@ -171,6 +178,14 @@ Phase 7B authenticated routes:
 - `/api/v1/customers/**`
 - `/api/v1/inventories/**`
 - `/api/v1/orders/**`
+
+Phase 8 container verification:
+
+- `GET /api/v1/health` returns `200`
+- `POST /api/v1/auth/login` returns a JWT
+- `GET /api/v1/products` without a token returns `401`
+- `GET /api/v1/products` with `Authorization: Bearer <token>` returns `200`
+- Swagger UI and OpenAPI JSON stay public in the Dockerized stack
 
 Windows PowerShell notes:
 
