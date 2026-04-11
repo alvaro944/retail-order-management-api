@@ -4,7 +4,7 @@ Backend API for managing products, customers, inventory, and orders in a retail 
 
 ## Current Status
 
-Phase 7A is implemented:
+Phase 7B is implemented:
 
 - Spring Boot 3 + Java 21 + Maven bootstrap
 - Modular package structure by domain
@@ -26,6 +26,7 @@ Phase 7A is implemented:
 - Spring Security base with stateless JWT authentication
 - Bootstrap user authentication endpoint at `/api/v1/auth/login`
 - Authenticated JWT self-check endpoint at `/api/v1/auth/me`
+- JWT protection for the `product`, `customer`, `inventory`, and `order` modules
 - Validation, `404` handling, and `409` handling for duplicate SKU
 - Integration tests for the `auth`, `product`, `customer`, `inventory`, and `order` modules
 
@@ -125,6 +126,14 @@ Current module endpoints:
 - `GET /v3/api-docs`
 - `GET /swagger-ui/index.html`
 
+Phase 7B access rules:
+
+- Public: `GET /health`
+- Public: `POST /auth/login`
+- Public: Swagger UI and OpenAPI JSON
+- Authenticated: `GET /auth/me`
+- Authenticated: all `/products/**`, `/customers/**`, `/inventories/**`, and `/orders/**` routes
+
 ## Agent And Maintainer Guide
 
 For future coding chats, see `AGENTS.md`. It documents:
@@ -162,7 +171,7 @@ APP_SECURITY_BOOTSTRAP_PASSWORD=admin123
 APP_SECURITY_BOOTSTRAP_ROLE=ADMIN
 ```
 
-The bootstrap user is intended for local development and manual verification in Phase 7A. Override those defaults through environment variables outside local development.
+The bootstrap user is intended for local development and manual verification in Phase 7B. Override those defaults through environment variables outside local development.
 
 ### Run the Application
 
@@ -224,7 +233,7 @@ mvn test -Dtest=OrderControllerIntegrationTest
 
 ### Manual API Smoke Test
 
-The following examples can be used after the app is running. For Phase 7A manual validation, open Swagger UI, open the OpenAPI JSON, obtain a JWT, and confirm `/auth/me` requires a bearer token while the business modules remain reachable.
+The following examples can be used after the app is running. For Phase 7B manual validation, open Swagger UI, open the OpenAPI JSON, obtain a JWT, confirm the business modules require authentication, and verify the same routes work when a bearer token is provided.
 
 Authentication flow in PowerShell:
 
@@ -240,12 +249,24 @@ $token = $loginResponse.accessToken
 Invoke-RestMethod `
   -Uri "http://localhost:8080/api/v1/auth/me" `
   -Headers @{ Authorization = "Bearer $token" }
+Invoke-RestMethod `
+  -Uri "http://localhost:8080/api/v1/products" `
+  -Headers @{ Authorization = "Bearer $token" }
+
+Invoke-RestMethod `
+  -Uri "http://localhost:8080/api/v1/products" `
+  -Method POST `
+  -Headers @{ Authorization = "Bearer $token" } `
+  -ContentType "application/json" `
+  -Body '{"name":"Mouse","description":"Compact mouse","price":29.99,"sku":"MOU-100"}'
 ```
 
 Expected negative auth checks:
 
 ```powershell
 Invoke-WebRequest -Uri "http://localhost:8080/api/v1/auth/me"
+
+Invoke-WebRequest -Uri "http://localhost:8080/api/v1/products"
 
 Invoke-WebRequest `
   -Uri "http://localhost:8080/api/v1/auth/login" `
@@ -258,165 +279,16 @@ Invoke-WebRequest `
   -Headers @{ Authorization = "Bearer invalid-token" }
 ```
 
-In PowerShell, the three negative checks above are expected to raise an exception because the API returns `401`. That is still a successful validation of the security behavior.
+In PowerShell, the four negative checks above are expected to raise an exception because the API returns `401`. That is still a successful validation of the security behavior.
 
-Product flow:
+Swagger/OpenAPI checks:
 
-```bash
-curl -X POST http://localhost:8080/api/v1/products \
-  -H "Content-Type: application/json" \
-  -d "{\"name\":\"Mouse\",\"description\":\"Compact mouse\",\"price\":29.99,\"sku\":\"MOU-100\"}"
-
-curl http://localhost:8080/api/v1/products
-curl http://localhost:8080/api/v1/products/1
-
-curl -X PUT http://localhost:8080/api/v1/products/1 \
-  -H "Content-Type: application/json" \
-  -d "{\"name\":\"Mouse Pro\",\"description\":\"Updated\",\"price\":39.99,\"sku\":\"MOU-101\"}"
-
-curl -X DELETE http://localhost:8080/api/v1/products/1
+```text
+Open Swagger UI: http://localhost:8080/api/v1/swagger-ui/index.html
+Open OpenAPI JSON: http://localhost:8080/api/v1/v3/api-docs
 ```
 
-Customer flow in PowerShell:
-
-```powershell
-Invoke-WebRequest -Uri "http://localhost:8080/api/v1/health"
-
-Invoke-WebRequest `
-  -Uri "http://localhost:8080/api/v1/customers" `
-  -Method POST `
-  -ContentType "application/json" `
-  -Body '{"firstName":"Ana","lastName":"Garcia","email":"ana@example.com","phone":"+34 600 000 001"}'
-
-Invoke-WebRequest -Uri "http://localhost:8080/api/v1/customers"
-Invoke-WebRequest -Uri "http://localhost:8080/api/v1/customers/1"
-
-Invoke-WebRequest `
-  -Uri "http://localhost:8080/api/v1/customers/1" `
-  -Method PUT `
-  -ContentType "application/json" `
-  -Body '{"firstName":"Ana Updated","lastName":"Garcia","email":"ana.updated@example.com"}'
-
-Invoke-WebRequest `
-  -Uri "http://localhost:8080/api/v1/customers/1" `
-  -Method DELETE
-```
-
-Expected error checks for the customer flow:
-
-```powershell
-Invoke-WebRequest -Uri "http://localhost:8080/api/v1/customers/1"
-
-Invoke-WebRequest `
-  -Uri "http://localhost:8080/api/v1/customers" `
-  -Method POST `
-  -ContentType "application/json" `
-  -Body '{"firstName":"Otro","lastName":"User","email":"ana.updated@example.com"}'
-
-Invoke-WebRequest `
-  -Uri "http://localhost:8080/api/v1/customers" `
-  -Method POST `
-  -ContentType "application/json" `
-  -Body '{"firstName":"","email":"not-valid"}'
-```
-
-In PowerShell, the last three commands are expected to raise an exception because the API returns `404`, `409`, and `400` respectively. That is still a successful manual validation of the endpoint behavior.
-
-Inventory flow in PowerShell:
-
-```powershell
-Invoke-WebRequest `
-  -Uri "http://localhost:8080/api/v1/products" `
-  -Method POST `
-  -ContentType "application/json" `
-  -Body '{"name":"Monitor","description":"27 inch monitor","price":199.99,"sku":"MON-200"}'
-
-Invoke-WebRequest `
-  -Uri "http://localhost:8080/api/v1/inventories" `
-  -Method POST `
-  -ContentType "application/json" `
-  -Body '{"productId":1,"quantityAvailable":15,"minimumStock":3}'
-
-Invoke-WebRequest -Uri "http://localhost:8080/api/v1/inventories"
-Invoke-WebRequest -Uri "http://localhost:8080/api/v1/inventories/1"
-Invoke-WebRequest -Uri "http://localhost:8080/api/v1/products/1/inventory"
-
-Invoke-WebRequest `
-  -Uri "http://localhost:8080/api/v1/inventories/1" `
-  -Method PUT `
-  -ContentType "application/json" `
-  -Body '{"minimumStock":5}'
-
-Invoke-WebRequest `
-  -Uri "http://localhost:8080/api/v1/inventories/1/adjust" `
-  -Method PATCH `
-  -ContentType "application/json" `
-  -Body '{"type":"INCREASE","quantity":4}'
-
-Invoke-WebRequest `
-  -Uri "http://localhost:8080/api/v1/inventories/1/adjust" `
-  -Method PATCH `
-  -ContentType "application/json" `
-  -Body '{"type":"DECREASE","quantity":30}'
-
-Invoke-WebRequest `
-  -Uri "http://localhost:8080/api/v1/products/1" `
-  -Method DELETE
-```
-
-In PowerShell, the last two commands are expected to raise an exception because the API returns `409` for a negative-stock adjustment attempt and for deleting a product that still has inventory. That is still a successful manual validation of the endpoint behavior.
-
-Order flow in PowerShell:
-
-```powershell
-Invoke-WebRequest `
-  -Uri "http://localhost:8080/api/v1/customers" `
-  -Method POST `
-  -ContentType "application/json" `
-  -Body '{"firstName":"Ana","lastName":"Garcia","email":"ana.orders@example.com"}'
-
-Invoke-WebRequest `
-  -Uri "http://localhost:8080/api/v1/products" `
-  -Method POST `
-  -ContentType "application/json" `
-  -Body '{"name":"Wireless Mouse","description":"Compact mouse","price":29.99,"sku":"WM-100"}'
-
-Invoke-WebRequest `
-  -Uri "http://localhost:8080/api/v1/inventories" `
-  -Method POST `
-  -ContentType "application/json" `
-  -Body '{"productId":1,"quantityAvailable":10,"minimumStock":2}'
-
-Invoke-WebRequest `
-  -Uri "http://localhost:8080/api/v1/orders" `
-  -Method POST `
-  -ContentType "application/json" `
-  -Body '{"customerId":1,"items":[{"productId":1,"quantity":3}]}'
-
-Invoke-WebRequest -Uri "http://localhost:8080/api/v1/orders"
-Invoke-WebRequest -Uri "http://localhost:8080/api/v1/orders/1"
-Invoke-WebRequest -Uri "http://localhost:8080/api/v1/products/1/inventory"
-
-Invoke-WebRequest `
-  -Uri "http://localhost:8080/api/v1/orders/1/cancel" `
-  -Method POST `
-  -ContentType "application/json"
-
-Invoke-WebRequest -Uri "http://localhost:8080/api/v1/orders/1"
-Invoke-WebRequest -Uri "http://localhost:8080/api/v1/products/1/inventory"
-
-Invoke-WebRequest `
-  -Uri "http://localhost:8080/api/v1/orders/1/cancel" `
-  -Method POST `
-  -ContentType "application/json"
-
-Invoke-WebRequest `
-  -Uri "http://localhost:8080/api/v1/orders/999/cancel" `
-  -Method POST `
-  -ContentType "application/json"
-```
-
-In PowerShell, the last two commands are expected to raise an exception because the API returns `409` for cancelling an already cancelled order and `404` for cancelling an order that does not exist. That is still a successful manual validation of the endpoint behavior.
+Use the `Authorize` button in Swagger UI with `Bearer <token>`, then confirm protected operations under `product`, `customer`, `inventory`, and `order` execute successfully.
 
 ## Error Semantics
 
@@ -451,10 +323,10 @@ Error payloads are returned as RFC 9457 `ProblemDetail` responses with a `path` 
 6. Phase 5: order lifecycle cancellation
 7. Phase 6: OpenAPI and Swagger
 8. Phase 7A: Spring Security + JWT base
+9. Phase 7B: Spring Security + JWT protection
 
 ### Portfolio Version
 
-9. Phase 7B: Spring Security + JWT protection
 10. Docker
 11. GitHub Actions CI
 12. Unit and integration testing hardening if needed
@@ -486,4 +358,4 @@ Error payloads are returned as RFC 9457 `ProblemDetail` responses with a `path` 
 
 ## Immediate Next Step
 
-The next security step is Phase 7B: protect the `product`, `customer`, `inventory`, and `order` modules with the JWT base added in Phase 7A while keeping `/health`, Swagger, OpenAPI, and auth endpoints public.
+The next planned step after Phase 7B is Docker packaging and local container workflow support.

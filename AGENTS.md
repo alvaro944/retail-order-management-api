@@ -19,7 +19,7 @@ If the task touches orders, also read:
 
 ## Current Project Status
 
-Phase 7A is complete.
+Phase 7B is complete.
 
 Implemented modules:
 
@@ -30,10 +30,7 @@ Implemented modules:
 
 Next planned phase:
 
-- split the next security work into:
-  - Phase 7B: Spring Security + JWT protection
-  - recommended branch:
-    - `codex/phase-7b-security-jwt-protection`
+- Docker packaging and local container workflow
 
 ## Architecture Rules
 
@@ -153,23 +150,27 @@ http://localhost:8080/api/v1/swagger-ui/index.html
 http://localhost:8080/api/v1/v3/api-docs
 ```
 
-Phase 7A auth manual verification:
+Phase 7B auth manual verification:
 
 ```text
 POST http://localhost:8080/api/v1/auth/login
 GET http://localhost:8080/api/v1/auth/me
 ```
 
-Phase 7A public routes:
+Phase 7B public routes:
 
 - `/api/v1/health`
 - `/api/v1/swagger-ui/**`
 - `/api/v1/v3/api-docs/**`
 - `/api/v1/auth/login`
 
-Phase 7A authenticated route:
+Phase 7B authenticated routes:
 
 - `/api/v1/auth/me`
+- `/api/v1/products/**`
+- `/api/v1/customers/**`
+- `/api/v1/inventories/**`
+- `/api/v1/orders/**`
 
 Windows PowerShell notes:
 

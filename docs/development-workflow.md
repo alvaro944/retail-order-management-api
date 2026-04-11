@@ -161,6 +161,19 @@ For Phase 7A, the minimum manual flow is:
 - verify `GET /api/v1/health` still returns `200` without authentication
 - verify at least one existing business endpoint such as `GET /api/v1/products` remains public in Phase 7A
 
+For Phase 7B, the minimum manual flow is:
+
+- start the app with the `test` profile
+- open `http://localhost:8080/api/v1/swagger-ui/index.html`
+- open `http://localhost:8080/api/v1/v3/api-docs`
+- call `POST /api/v1/auth/login` and store the bearer token
+- call `GET /api/v1/auth/me` with `Authorization: Bearer <token>`
+- verify `GET /api/v1/products` without a token returns `401`
+- verify `GET /api/v1/products` with `Authorization: Bearer <token>` returns `200`
+- verify `GET /api/v1/auth/me` with an invalid token returns `401`
+- verify `GET /api/v1/health` still returns `200` without authentication
+- use Swagger UI `Authorize` with the same bearer token and verify at least one business operation succeeds
+
 PowerShell note:
 
 - A `404`, `409`, or `400` response from `Invoke-WebRequest` is surfaced as an exception. Treat that as expected when you are deliberately testing error scenarios, and inspect the response details instead of assuming the API failed to execute.
