@@ -174,6 +174,19 @@ For Phase 7B, the minimum manual flow is:
 - verify `GET /api/v1/health` still returns `200` without authentication
 - use Swagger UI `Authorize` with the same bearer token and verify at least one business operation succeeds
 
+For Phase 8, the minimum manual flow is:
+
+- run `docker compose up --build`
+- verify PostgreSQL becomes healthy and the API starts successfully
+- call `GET /api/v1/health`
+- call `POST /api/v1/auth/login` and store the bearer token
+- call `GET /api/v1/products` without a token and verify `401`
+- call `GET /api/v1/products` with `Authorization: Bearer <token>` and verify `200`
+- call `GET /api/v1/auth/me` with the same bearer token
+- open `http://localhost:8080/api/v1/swagger-ui/index.html`
+- open `http://localhost:8080/api/v1/v3/api-docs`
+- run `docker compose down`
+
 PowerShell note:
 
 - A `404`, `409`, or `400` response from `Invoke-WebRequest` is surfaced as an exception. Treat that as expected when you are deliberately testing error scenarios, and inspect the response details instead of assuming the API failed to execute.
