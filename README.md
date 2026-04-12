@@ -4,7 +4,7 @@ Backend API for managing products, customers, inventory, and orders in a retail 
 
 ## Current Status
 
-Phase 9 is implemented:
+Phase 10 is implemented:
 
 - Spring Boot 3 + Java 21 + Maven bootstrap
 - Modular package structure by domain
@@ -29,8 +29,10 @@ Phase 9 is implemented:
 - JWT protection for the `product`, `customer`, `inventory`, and `order` modules
 - Docker packaging and local container workflow with Docker Compose
 - GitHub Actions CI workflow for automated Maven verification on `push` and `pull_request`
+- Focused testing hardening for critical integration scenarios and auth/JWT service unit coverage
 - Validation, `404` handling, and `409` handling for duplicate SKU
 - Integration tests for the `auth`, `product`, `customer`, `inventory`, and `order` modules
+- Focused unit tests for the auth and JWT services
 
 ## Tech Stack
 
@@ -273,9 +275,11 @@ Useful focused test commands:
 
 ```bash
 mvn test -Dtest=AuthControllerIntegrationTest
+mvn test -Dtest=AuthServiceTest
 mvn test -Dtest=ProductControllerIntegrationTest
 mvn test -Dtest=CustomerControllerIntegrationTest
 mvn test -Dtest=InventoryControllerIntegrationTest
+mvn test -Dtest=JwtServiceTest
 mvn test -Dtest=OrderControllerIntegrationTest
 ```
 
@@ -429,7 +433,7 @@ Error payloads are returned as RFC 9457 `ProblemDetail` responses with a `path` 
 
 8. Phase 8: Docker packaging and local container workflow
 9. Phase 9: GitHub Actions CI
-10. Phase 10: Unit and integration testing hardening if needed
+10. Phase 10: Unit and integration testing hardening
 
 ### Advanced Evolution
 
@@ -458,4 +462,4 @@ Error payloads are returned as RFC 9457 `ProblemDetail` responses with a `path` 
 
 ## Immediate Next Step
 
-The next planned step after Phase 9 is Phase 10: unit and integration testing hardening if needed.
+The next planned step after Phase 10 is the Advanced Evolution track, starting with domain events if still justified.

@@ -19,7 +19,7 @@ If the task touches orders, also read:
 
 ## Current Project Status
 
-Phase 9 is complete.
+Phase 10 is complete.
 
 Implemented modules:
 
@@ -30,7 +30,7 @@ Implemented modules:
 
 Next planned phase:
 
-- Phase 10: unit and integration testing hardening if needed
+- Advanced evolution work, starting with domain events if justified
 
 ## Architecture Rules
 
@@ -142,9 +142,11 @@ Useful focused test commands:
 
 ```bash
 mvn test -Dtest=AuthControllerIntegrationTest
+mvn test -Dtest=AuthServiceTest
 mvn test -Dtest=ProductControllerIntegrationTest
 mvn test -Dtest=CustomerControllerIntegrationTest
 mvn test -Dtest=InventoryControllerIntegrationTest
+mvn test -Dtest=JwtServiceTest
 mvn test -Dtest=OrderControllerIntegrationTest
 ```
 

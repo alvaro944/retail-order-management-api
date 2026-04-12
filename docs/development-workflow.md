@@ -199,6 +199,14 @@ For Phase 9, the minimum validation flow is:
 - confirm the workflow runs `mvn -B clean verify`
 - update README, `AGENTS.md`, and workflow documentation if the CI behavior changes
 
+For Phase 10, the minimum validation flow is:
+
+- add focused tests only where they harden real functional or security gaps
+- run the touched integration tests directly while developing
+- run focused unit tests if service-level coverage is added
+- run `mvn clean verify`
+- update README and `AGENTS.md` if the project phase or useful testing commands change
+
 PowerShell note:
 
 - A `404`, `409`, or `400` response from `Invoke-WebRequest` is surfaced as an exception. Treat that as expected when you are deliberately testing error scenarios, and inspect the response details instead of assuming the API failed to execute.
