@@ -4,7 +4,7 @@ Backend API for managing products, customers, inventory, and orders in a retail 
 
 ## Current Status
 
-Phase 7B is implemented:
+Phase 9 is implemented:
 
 - Spring Boot 3 + Java 21 + Maven bootstrap
 - Modular package structure by domain
@@ -27,6 +27,8 @@ Phase 7B is implemented:
 - Bootstrap user authentication endpoint at `/api/v1/auth/login`
 - Authenticated JWT self-check endpoint at `/api/v1/auth/me`
 - JWT protection for the `product`, `customer`, `inventory`, and `order` modules
+- Docker packaging and local container workflow with Docker Compose
+- GitHub Actions CI workflow for automated Maven verification on `push` and `pull_request`
 - Validation, `404` handling, and `409` handling for duplicate SKU
 - Integration tests for the `auth`, `product`, `customer`, `inventory`, and `order` modules
 
@@ -43,6 +45,7 @@ Phase 7B is implemented:
 - Springdoc OpenAPI + Swagger UI
 - H2 for test profile
 - Docker and Docker Compose for local container workflow
+- GitHub Actions for continuous integration
 
 ## Project Structure
 
@@ -276,6 +279,18 @@ mvn test -Dtest=InventoryControllerIntegrationTest
 mvn test -Dtest=OrderControllerIntegrationTest
 ```
 
+### Continuous Integration
+
+The repository now includes a GitHub Actions workflow at `.github/workflows/ci.yml`.
+
+The workflow triggers on every `push` and `pull_request` and runs the same backend verification command used locally:
+
+```bash
+mvn -B clean verify
+```
+
+The CI job uses `actions/setup-java` with Temurin Java 21 and Maven dependency caching. It does not run Docker, Docker Compose, or deployment steps in this phase. The container workflow remains a local verification path for Phase 8.
+
 ### Manual API Smoke Test
 
 The following examples can be used after the app is running. For Phase 7B manual validation, open Swagger UI, open the OpenAPI JSON, obtain a JWT, confirm the business modules require authentication, and verify the same routes work when a bearer token is provided.
@@ -407,20 +422,20 @@ Error payloads are returned as RFC 9457 `ProblemDetail` responses with a `path` 
 5. Phase 4: orders
 6. Phase 5: order lifecycle cancellation
 7. Phase 6: OpenAPI and Swagger
-8. Phase 7A: Spring Security + JWT base
-9. Phase 7B: Spring Security + JWT protection
+- Phase 7A: Spring Security + JWT base
+- Phase 7B: Spring Security + JWT protection
 
 ### Portfolio Version
 
-10. Docker packaging and local container workflow
-11. GitHub Actions CI
-12. Unit and integration testing hardening if needed
+8. Phase 8: Docker packaging and local container workflow
+9. Phase 9: GitHub Actions CI
+10. Phase 10: Unit and integration testing hardening if needed
 
 ### Advanced Evolution
 
-13. Domain events
-14. Stronger hexagonal boundaries
-15. Microservice extraction if justified
+11. Domain events
+12. Stronger hexagonal boundaries
+13. Microservice extraction if justified
 
 ## Suggested Commit Plan
 
@@ -443,4 +458,4 @@ Error payloads are returned as RFC 9457 `ProblemDetail` responses with a `path` 
 
 ## Immediate Next Step
 
-The next planned step after Phase 8 is GitHub Actions CI.
+The next planned step after Phase 9 is Phase 10: unit and integration testing hardening if needed.

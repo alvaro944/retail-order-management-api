@@ -50,6 +50,7 @@ Before committing:
 
 - Ensure the code compiles.
 - Run `mvn clean verify`.
+- Keep `.github/workflows/ci.yml` aligned with the local verification path when CI changes are involved.
 - Review changed files for unnecessary edits.
 
 Before merging:
@@ -58,6 +59,8 @@ Before merging:
 - Verify the expected request and response flow if an endpoint was added or changed.
 - Confirm README or technical docs are updated when needed.
 - If a branch is promoted to `main`, keep the feature branch unless cleanup was explicitly requested.
+
+GitHub Actions now provides the repository's minimum automated validation on `push` and `pull_request`, but it does not replace the requirement to run `mvn clean verify` locally before closing work.
 
 ## Manual Testing Guidance
 
@@ -186,6 +189,15 @@ For Phase 8, the minimum manual flow is:
 - open `http://localhost:8080/api/v1/swagger-ui/index.html`
 - open `http://localhost:8080/api/v1/v3/api-docs`
 - run `docker compose down`
+
+For Phase 9, the minimum validation flow is:
+
+- run `mvn clean verify`
+- confirm `.github/workflows/ci.yml` exists
+- confirm the workflow triggers on `push` and `pull_request`
+- confirm the workflow uses Java 21 via `actions/setup-java`
+- confirm the workflow runs `mvn -B clean verify`
+- update README, `AGENTS.md`, and workflow documentation if the CI behavior changes
 
 PowerShell note:
 

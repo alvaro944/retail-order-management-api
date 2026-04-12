@@ -19,7 +19,7 @@ If the task touches orders, also read:
 
 ## Current Project Status
 
-Phase 8 is complete.
+Phase 9 is complete.
 
 Implemented modules:
 
@@ -30,7 +30,7 @@ Implemented modules:
 
 Next planned phase:
 
-- GitHub Actions CI
+- Phase 10: unit and integration testing hardening if needed
 
 ## Architecture Rules
 
@@ -127,6 +127,17 @@ Automated verification:
 mvn clean verify
 ```
 
+GitHub Actions CI workflow:
+
+```text
+.github/workflows/ci.yml
+```
+
+- triggers on `push` and `pull_request`
+- runs `mvn -B clean verify`
+- uses Temurin Java 21 with Maven dependency caching
+- should stay aligned with the local `mvn clean verify` verification path
+
 Useful focused test commands:
 
 ```bash
@@ -186,6 +197,13 @@ Phase 8 container verification:
 - `GET /api/v1/products` without a token returns `401`
 - `GET /api/v1/products` with `Authorization: Bearer <token>` returns `200`
 - Swagger UI and OpenAPI JSON stay public in the Dockerized stack
+
+Phase 9 CI verification:
+
+- `.github/workflows/ci.yml` exists
+- the workflow triggers on `push` and `pull_request`
+- the workflow runs `mvn -B clean verify`
+- future changes should keep the workflow and local verification green together
 
 Windows PowerShell notes:
 
