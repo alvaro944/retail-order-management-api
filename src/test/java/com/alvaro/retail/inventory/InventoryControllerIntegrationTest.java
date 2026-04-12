@@ -331,6 +331,25 @@ class InventoryControllerIntegrationTest {
     }
 
     @Test
+    void adjustInventoryWithInvalidPayloadReturnsBadRequest() throws Exception {
+        Product product = persistProduct("Microphone", "USB microphone", new BigDecimal("129.99"), "MIC-100", true);
+        Inventory inventory = persistInventory(product, 6, 2);
+
+        mockMvc.perform(authorized(patch("/inventories/{id}/adjust", inventory.getId())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "quantity": 0
+                    }
+                    """)))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.title").value("Bad Request"))
+            .andExpect(jsonPath("$.detail").value("Request validation failed"))
+            .andExpect(jsonPath("$.errors.type").exists())
+            .andExpect(jsonPath("$.errors.quantity").exists());
+    }
+
+    @Test
     void adjustInventoryRefreshesUpdatedAtTimestamp() throws Exception {
         Product product = persistProduct("Charger", "Fast charger", new BigDecimal("24.99"), "CHA-100", true);
         Inventory inventory = persistInventory(product, 10, 2);

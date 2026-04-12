@@ -312,6 +312,39 @@ class OrderControllerIntegrationTest {
     }
 
     @Test
+    void createOrderWithMultipleItemsRollsBackWhenLaterLineHasInsufficientStock() throws Exception {
+        Customer customer = persistCustomer("Ana", "Garcia", "ana@example.com", true);
+        Product mouse = persistProduct("Wireless Mouse", "Compact mouse", new BigDecimal("29.99"), "WM-100", true);
+        Product keyboard = persistProduct("Mechanical Keyboard", "Gaming keyboard", new BigDecimal("89.50"), "MK-200", true);
+        Inventory mouseInventory = persistInventory(mouse, 10, 2);
+        Inventory keyboardInventory = persistInventory(keyboard, 1, 1);
+
+        mockMvc.perform(authorized(post("/orders")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "customerId": %d,
+                      "items": [
+                        {
+                          "productId": %d,
+                          "quantity": 2
+                        },
+                        {
+                          "productId": %d,
+                          "quantity": 2
+                        }
+                      ]
+                    }
+                    """.formatted(customer.getId(), mouse.getId(), keyboard.getId()))))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.detail").value("Product with id " + keyboard.getId() + " does not have enough stock"));
+
+        Assertions.assertEquals(0L, orderRepository.count());
+        Assertions.assertEquals(10, inventoryRepository.findById(mouseInventory.getId()).orElseThrow().getQuantityAvailable());
+        Assertions.assertEquals(1, inventoryRepository.findById(keyboardInventory.getId()).orElseThrow().getQuantityAvailable());
+    }
+
+    @Test
     void createOrderReturnsBadRequestForDuplicateProducts() throws Exception {
         Customer customer = persistCustomer("Ana", "Garcia", "ana@example.com", true);
         Product product = persistProduct("Wireless Mouse", "Compact mouse", new BigDecimal("29.99"), "WM-100", true);
@@ -420,6 +453,22 @@ class OrderControllerIntegrationTest {
 
         Inventory restoredInventory = inventoryRepository.findById(inventory.getId()).orElseThrow();
         Assertions.assertEquals(10, restoredInventory.getQuantityAvailable());
+    }
+
+    @Test
+    void cancelOrderReturnsNotFoundWhenRecoveryInventoryIsMissing() throws Exception {
+        Customer customer = persistCustomer("Ana", "Garcia", "ana@example.com", true);
+        Product product = persistProduct("Wireless Mouse", "Compact mouse", new BigDecimal("29.99"), "WM-100", true);
+        Inventory inventory = persistInventory(product, 10, 2);
+
+        Long orderId = createOrder(customer.getId(), product.getId(), 3);
+        inventoryRepository.deleteById(inventory.getId());
+
+        mockMvc.perform(authorized(post("/orders/{id}/cancel", orderId)))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.detail").value("Inventory for product with id " + product.getId() + " was not found"));
+
+        Assertions.assertEquals("CREATED", orderRepository.findById(orderId).orElseThrow().getStatus().name());
     }
 
     @Test

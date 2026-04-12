@@ -4,6 +4,7 @@ import com.alvaro.retail.inventory.entity.Inventory;
 import com.alvaro.retail.inventory.repository.InventoryRepository;
 import com.alvaro.retail.product.entity.Product;
 import com.alvaro.retail.product.repository.ProductRepository;
+import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,6 +25,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -56,6 +58,17 @@ class ProductControllerIntegrationTest {
             .andExpect(status().isUnauthorized())
             .andExpect(jsonPath("$.title").value("Unauthorized"))
             .andExpect(jsonPath("$.detail").value("Authentication is required to access this resource"))
+            .andExpect(jsonPath("$.path").value("/products"));
+    }
+
+    @Test
+    void getProductsWithMalformedTokenReturnsUnauthorizedProblemDetail() throws Exception {
+        mockMvc.perform(get("/products")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer invalid-token"))
+            .andExpect(status().isUnauthorized())
+            .andExpect(header().string("WWW-Authenticate", Matchers.containsString("Bearer")))
+            .andExpect(jsonPath("$.title").value("Unauthorized"))
+            .andExpect(jsonPath("$.detail").value("The access token is invalid or expired"))
             .andExpect(jsonPath("$.path").value("/products"));
     }
 

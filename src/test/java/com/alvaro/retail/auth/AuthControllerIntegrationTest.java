@@ -58,6 +58,24 @@ class AuthControllerIntegrationTest {
     }
 
     @Test
+    void loginWithInvalidPayloadReturnsBadRequestProblemDetail() throws Exception {
+        mockMvc.perform(post("/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "username": "",
+                      "password": ""
+                    }
+                    """))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.title").value("Bad Request"))
+            .andExpect(jsonPath("$.detail").value("Request validation failed"))
+            .andExpect(jsonPath("$.errors.username").exists())
+            .andExpect(jsonPath("$.errors.password").exists())
+            .andExpect(jsonPath("$.path").value("/auth/login"));
+    }
+
+    @Test
     void authMeWithoutTokenReturnsUnauthorizedProblemDetail() throws Exception {
         mockMvc.perform(get("/auth/me"))
             .andExpect(status().isUnauthorized())
