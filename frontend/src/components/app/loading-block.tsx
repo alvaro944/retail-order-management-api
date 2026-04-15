@@ -2,9 +2,8 @@ import { Skeleton } from "@/components/ui/skeleton"
 
 export function LoadingBlock() {
   return (
-    <div className="ledger-panel space-y-6 p-5 sm:p-6">
-      <div className="grid gap-3 md:grid-cols-3">
-        <Skeleton className="h-24 rounded-[1.25rem]" />
+    <div className="ledger-panel space-y-5 p-5 sm:p-6">
+      <div className="grid gap-3 md:grid-cols-2">
         <Skeleton className="h-24 rounded-[1.25rem]" />
         <Skeleton className="h-24 rounded-[1.25rem]" />
       </div>

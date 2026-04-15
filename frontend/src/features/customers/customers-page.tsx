@@ -2,7 +2,7 @@ import { useMemo, useState } from "react"
 
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { PencilLine, Phone, Search, Trash2, UserPlus, UsersRound } from "lucide-react"
+import { PencilLine, Search, Trash2, UserPlus } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { toast } from "sonner"
@@ -10,7 +10,6 @@ import { toast } from "sonner"
 import { EmptyState } from "@/components/app/empty-state"
 import { FormField } from "@/components/app/form-field"
 import { LoadingBlock } from "@/components/app/loading-block"
-import { MetricCard } from "@/components/app/metric-card"
 import { PageHeader } from "@/components/app/page-header"
 import { SectionCard } from "@/components/app/section-card"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -35,7 +34,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { getProblemDetailMessage } from "@/lib/api/problem-detail"
-import { formatDateTime, formatNumber } from "@/lib/format"
+import { formatNumber } from "@/lib/format"
 import { buildCustomerPayload } from "@/features/customers/customer-payload"
 import { createCustomer, customerQueryKey, deleteCustomer, getCustomers, updateCustomer } from "@/features/customers/api"
 
@@ -64,12 +63,7 @@ function CustomerFormFields({
 }) {
   return (
     <>
-      <FormField
-        label="First name"
-        htmlFor={firstNameId}
-        hint="Use the name operators expect to identify quickly."
-        error={form.formState.errors.firstName?.message}
-      >
+      <FormField label="First name" htmlFor={firstNameId} error={form.formState.errors.firstName?.message}>
         <Input id={firstNameId} className="bg-muted" {...form.register("firstName")} />
       </FormField>
       <FormField
@@ -79,20 +73,10 @@ function CustomerFormFields({
       >
         <Input id={lastNameId} className="bg-muted" {...form.register("lastName")} />
       </FormField>
-      <FormField
-        label="Email"
-        htmlFor={emailId}
-        hint="Used as the primary contact field in the current frontend."
-        error={form.formState.errors.email?.message}
-      >
+      <FormField label="Email" htmlFor={emailId} error={form.formState.errors.email?.message}>
         <Input id={emailId} type="email" className="bg-muted" {...form.register("email")} />
       </FormField>
-      <FormField
-        label="Phone"
-        htmlFor={phoneId}
-        hint="Optional, but useful for faster customer support context."
-        error={form.formState.errors.phone?.message}
-      >
+      <FormField label="Phone" htmlFor={phoneId} error={form.formState.errors.phone?.message}>
         <Input id={phoneId} className="bg-muted" {...form.register("phone")} />
       </FormField>
     </>
@@ -139,9 +123,7 @@ function CreateCustomerSheet() {
       <SheetContent className="w-full max-w-xl overflow-y-auto border-l border-border bg-card">
         <SheetHeader className="space-y-2 border-b border-border p-6">
           <SheetTitle>Create customer</SheetTitle>
-          <p className="text-sm leading-7 text-muted-foreground">
-            Register an active customer ready to be used in the current order flow.
-          </p>
+          <p className="text-sm leading-7 text-muted-foreground">Add a new customer record.</p>
         </SheetHeader>
         <form className="space-y-5 p-6" onSubmit={submit}>
           <CustomerFormFields
@@ -219,7 +201,7 @@ function EditCustomerDialog({
         <DialogHeader className="space-y-2 border-b border-border p-6">
           <DialogTitle>Edit customer</DialogTitle>
           <DialogDescription>
-            Update the service record for <span className="font-medium text-foreground">{firstName} {lastName}</span> without leaving the list.
+            Update <span className="font-medium text-foreground">{firstName} {lastName}</span> without leaving the list.
           </DialogDescription>
         </DialogHeader>
         <form
@@ -279,14 +261,13 @@ function DeactivateCustomerDialog({
       </DialogTrigger>
       <DialogContent className="max-w-md rounded-[1.5rem] bg-card p-0">
         <DialogHeader className="space-y-2 border-b border-border p-6">
-          <DialogTitle>Remove active customer</DialogTitle>
+          <DialogTitle>Remove customer</DialogTitle>
           <DialogDescription>
-            <span className="font-medium text-foreground">{firstName} {lastName}</span> will be hidden from active customer reads and order selection.
+            <span className="font-medium text-foreground">{firstName} {lastName}</span> will be removed from the active customer list.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3 p-6 text-sm leading-7 text-muted-foreground">
-          <p>Use this when the customer should leave the current working base without deleting historical records.</p>
-          <p>The backend handles this as a logical delete, so the active list stays clean.</p>
+          <p>Past orders stay intact.</p>
         </div>
         <DialogFooter className="border-t border-border bg-muted/35 px-6 py-5">
           <Button variant="outline" onClick={() => setOpen(false)}>
@@ -333,18 +314,12 @@ export function CustomersPage() {
     )
   }, [customers, search])
 
-  const customersWithPhone = useMemo(
-    () => customers.filter((customer) => Boolean(customer.phone?.trim())).length,
-    [customers],
-  )
-  const customersWithoutPhone = customers.length - customersWithPhone
-
   return (
     <section className="space-y-6">
       <PageHeader
-        eyebrow="Customer records"
+        eyebrow="Customers"
         title="Customers"
-        description="Keep customer records clean, searchable and ready for order creation while editing service details in place."
+        description="Keep customer records clear, searchable and ready for orders."
         meta={<span>{formatNumber(customers.length)} active customers</span>}
         actions={<CreateCustomerSheet />}
       />
@@ -360,14 +335,8 @@ export function CustomersPage() {
 
       {!query.isLoading && !query.isError ? (
         <>
-          <div className="ledger-reveal grid gap-4 xl:grid-cols-[minmax(0,1.7fr)_repeat(2,minmax(0,1fr))]">
+          <div className="ledger-reveal">
             <SectionCard variant="soft" className="space-y-4">
-              <div className="space-y-2">
-                <p className="ledger-kicker">Service posture</p>
-                <p className="max-w-2xl text-sm leading-7 text-muted-foreground">
-                  Search by name, email or phone to keep customer support and order intake moving, then update or retire records inline.
-                </p>
-              </div>
               <div className="relative max-w-xl">
                 <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
@@ -386,33 +355,20 @@ export function CustomersPage() {
                 ) : null}
               </div>
             </SectionCard>
-
-            <MetricCard
-              label="Reachable by phone"
-              value={formatNumber(customersWithPhone)}
-              detail={`${formatNumber(customersWithoutPhone)} customers still have no phone number registered.`}
-              icon={<Phone className="size-4" />}
-            />
-            <MetricCard
-              label="Operational base"
-              value={formatNumber(customers.length)}
-              detail="All active records can be used immediately in the order workflow."
-              icon={<UsersRound className="size-4" />}
-            />
           </div>
 
           {customers.length === 0 ? (
             <EmptyState
               icon={UserPlus}
               title="No customers yet"
-              description="Create the first customer to unlock a smoother order creation flow with real commercial context."
+              description="Create the first customer to prepare the order flow."
               action={<CreateCustomerSheet />}
             />
           ) : rows.length === 0 ? (
             <EmptyState
               icon={Search}
               title="No customers match this search"
-              description="Try a broader search term or clear the current filter to review the full customer base again."
+              description="Try a broader term or clear the search."
               action={
                 <Button variant="outline" onClick={() => setSearch("")}>
                   Clear search
@@ -427,7 +383,6 @@ export function CustomersPage() {
                     <TableHead>Customer</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Phone</TableHead>
-                    <TableHead>Created</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -435,18 +390,14 @@ export function CustomersPage() {
                   {rows.map((customer) => (
                     <TableRow key={customer.id}>
                       <TableCell className="min-w-[220px]">
-                        <div className="space-y-1">
-                          <p className="font-medium text-foreground">
-                            {customer.firstName} {customer.lastName}
-                          </p>
-                          <p className="text-xs text-muted-foreground">Customer #{customer.id}</p>
-                        </div>
+                        <p className="font-medium text-foreground">
+                          {customer.firstName} {customer.lastName}
+                        </p>
                       </TableCell>
                       <TableCell className="text-sm text-foreground">{customer.email}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">
-                        {customer.phone || "No phone number registered"}
+                        {customer.phone || "Not provided"}
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{formatDateTime(customer.createdAt)}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
                           <EditCustomerDialog

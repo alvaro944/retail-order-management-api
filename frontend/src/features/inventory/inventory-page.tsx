@@ -115,17 +115,10 @@ function CreateInventorySheet() {
       <SheetContent className="w-full max-w-xl overflow-y-auto border-l border-border bg-card">
         <SheetHeader className="space-y-2 border-b border-border p-6">
           <SheetTitle>Create inventory</SheetTitle>
-          <p className="text-sm leading-7 text-muted-foreground">
-            Create the single inventory record allowed for an active product in the current backend model.
-          </p>
+          <p className="text-sm leading-7 text-muted-foreground">Create a stock record for an active product.</p>
         </SheetHeader>
         <form className="space-y-5 p-6" onSubmit={submit}>
-          <FormField
-            label="Product"
-            htmlFor="inventory-product"
-            hint="Only active products without inventory should be selected."
-            error={form.formState.errors.productId?.message}
-          >
+          <FormField label="Product" htmlFor="inventory-product" error={form.formState.errors.productId?.message}>
             <Select value={selectedProductId} onValueChange={(value) => form.setValue("productId", value ?? "")}>
               <SelectTrigger id="inventory-product" className="w-full bg-muted">
                 <SelectValue placeholder="Select a product" />
@@ -139,20 +132,10 @@ function CreateInventorySheet() {
               </SelectContent>
             </Select>
           </FormField>
-          <FormField
-            label="Quantity available"
-            htmlFor="inventory-quantity"
-            hint="This value is used immediately by order creation validations."
-            error={form.formState.errors.quantityAvailable?.message}
-          >
+          <FormField label="Quantity available" htmlFor="inventory-quantity" error={form.formState.errors.quantityAvailable?.message}>
             <Input id="inventory-quantity" type="number" className="bg-muted" {...form.register("quantityAvailable")} />
           </FormField>
-          <FormField
-            label="Minimum stock"
-            htmlFor="inventory-minimum"
-            hint="Optional threshold to surface low-stock products faster."
-            error={form.formState.errors.minimumStock?.message as string | undefined}
-          >
+          <FormField label="Minimum stock" htmlFor="inventory-minimum" error={form.formState.errors.minimumStock?.message as string | undefined}>
             <Input id="inventory-minimum" type="number" className="bg-muted" {...form.register("minimumStock")} />
           </FormField>
           <SheetFooter className="border-t border-border bg-muted/35 p-6">
@@ -237,7 +220,7 @@ function EditInventoryDialog({
         <DialogHeader className="space-y-2 border-b border-border p-6">
           <DialogTitle>Edit inventory</DialogTitle>
           <DialogDescription>
-            Set the final quantity and reorder threshold for <span className="font-medium text-foreground">{productName}</span> in one place.
+            Update stock and threshold for <span className="font-medium text-foreground">{productName}</span>.
           </DialogDescription>
         </DialogHeader>
         <form
@@ -273,12 +256,7 @@ function EditInventoryDialog({
             </div>
           ) : null}
 
-          <FormField
-            label="Quantity available"
-            htmlFor={`desired-quantity-${inventoryId}`}
-            hint="Enter the final quantity you want this inventory record to have after saving."
-            error={form.formState.errors.desiredQuantity?.message}
-          >
+          <FormField label="Quantity available" htmlFor={`desired-quantity-${inventoryId}`} error={form.formState.errors.desiredQuantity?.message}>
             <Input
               id={`desired-quantity-${inventoryId}`}
               type="number"
@@ -287,12 +265,7 @@ function EditInventoryDialog({
             />
           </FormField>
 
-          <FormField
-            label="Minimum stock"
-            htmlFor={`minimum-stock-${inventoryId}`}
-            hint="Keep the low-stock threshold here so both stock values are updated from the same popup."
-            error={form.formState.errors.minimumStock?.message}
-          >
+          <FormField label="Minimum stock" htmlFor={`minimum-stock-${inventoryId}`} error={form.formState.errors.minimumStock?.message}>
             <Input
               id={`minimum-stock-${inventoryId}`}
               type="number"
@@ -361,9 +334,9 @@ export function InventoryPage() {
   return (
     <section className="space-y-6">
       <PageHeader
-        eyebrow="Inventory control"
+        eyebrow="Inventory"
         title="Inventory"
-        description="Track stock levels, highlight risk sooner and keep operators aligned with current order availability."
+        description="Track stock levels, thresholds and low-stock risk."
         meta={<span>{formatNumber(inventory.length)} tracked products</span>}
         actions={<CreateInventorySheet />}
       />
@@ -381,12 +354,6 @@ export function InventoryPage() {
         <>
           <div className="ledger-reveal grid gap-4 xl:grid-cols-[minmax(0,1.8fr)_repeat(2,minmax(0,1fr))]">
             <SectionCard variant="soft" className="space-y-4">
-              <div className="space-y-2">
-                <p className="ledger-kicker">Stock posture</p>
-                <p className="max-w-2xl text-sm leading-7 text-muted-foreground">
-                  Narrow the stock view by product name, SKU or low-stock risk to focus attention where replenishment pressure is higher.
-                </p>
-              </div>
               <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px]">
                 <div className="relative">
                   <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -427,13 +394,11 @@ export function InventoryPage() {
             <MetricCard
               label="Units available"
               value={formatNumber(totalUnits)}
-              detail="Total current stock across all tracked products."
               icon={<Warehouse className="size-4" />}
             />
             <MetricCard
               label="Low-stock products"
               value={formatNumber(lowStockCount)}
-              detail="Products at or below their configured minimum threshold."
               icon={<AlertTriangle className="size-4" />}
               accent={lowStockCount > 0 ? "danger" : "default"}
             />
@@ -443,14 +408,14 @@ export function InventoryPage() {
             <EmptyState
               icon={Warehouse}
               title="No inventory records yet"
-              description="Create inventory for an active product to start monitoring availability and detect low-stock conditions sooner."
+              description="Create inventory for an active product to start tracking availability."
               action={<CreateInventorySheet />}
             />
           ) : rows.length === 0 ? (
             <EmptyState
               icon={Search}
               title="No inventory records match these filters"
-              description="Clear the current filters to recover the full stock view or try a broader product search."
+              description="Clear the filters or try a broader search."
               action={
                 <Button
                   variant="outline"
@@ -485,15 +450,12 @@ export function InventoryPage() {
                     return (
                       <TableRow key={item.id}>
                         <TableCell className="min-w-[220px]">
-                          <div className="space-y-1">
-                            <p className="font-medium text-foreground">{item.product.name}</p>
-                            <p className="text-xs text-muted-foreground">Inventory #{item.id}</p>
-                          </div>
+                          <p className="font-medium text-foreground">{item.product.name}</p>
                         </TableCell>
                         <TableCell className="font-medium text-foreground">{item.product.sku}</TableCell>
                         <TableCell className="font-medium text-foreground">{formatNumber(item.quantityAvailable)}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">
-                          {item.minimumStock ?? "No threshold"}
+                          {item.minimumStock ?? "None"}
                         </TableCell>
                         <TableCell>
                           <StatusBadge status={isLowStock ? "LOW" : "HEALTHY"} />

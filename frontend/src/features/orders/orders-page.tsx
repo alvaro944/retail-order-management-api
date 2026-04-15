@@ -2,7 +2,7 @@ import { useMemo, useState } from "react"
 
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Plus, RotateCcw, Search, ShoppingCart, UserRound } from "lucide-react"
+import { Plus, RotateCcw, Search, ShoppingCart } from "lucide-react"
 import { useFieldArray, useForm, useWatch } from "react-hook-form"
 import { z } from "zod"
 import { toast } from "sonner"
@@ -10,7 +10,6 @@ import { toast } from "sonner"
 import { EmptyState } from "@/components/app/empty-state"
 import { FormField } from "@/components/app/form-field"
 import { LoadingBlock } from "@/components/app/loading-block"
-import { MetricCard } from "@/components/app/metric-card"
 import { PageHeader } from "@/components/app/page-header"
 import { SectionCard } from "@/components/app/section-card"
 import { StatusBadge } from "@/components/app/status-badge"
@@ -116,7 +115,6 @@ function CreateOrderDialog() {
 
         return {
           product,
-          inventory,
           quantity,
           subtotal,
           available,
@@ -209,16 +207,11 @@ function CreateOrderDialog() {
       <DialogContent className="max-h-[90dvh] max-w-4xl overflow-y-auto rounded-[1.75rem] bg-card p-0">
         <DialogHeader className="space-y-2 border-b border-border p-6">
           <DialogTitle>Create order</DialogTitle>
-          <DialogDescription>Choose a customer, add lines and confirm the total.</DialogDescription>
+          <DialogDescription>Choose a customer, add items and confirm the total.</DialogDescription>
         </DialogHeader>
 
         <form className="space-y-6 p-6" onSubmit={submit}>
-          <FormField
-            label="Customer"
-            htmlFor="order-customer"
-            hint="Active customers only."
-            error={form.formState.errors.customerId?.message}
-          >
+          <FormField label="Customer" htmlFor="order-customer" error={form.formState.errors.customerId?.message}>
             <Select value={selectedCustomerId} onValueChange={(value) => form.setValue("customerId", value ?? "")}>
               <SelectTrigger id="order-customer" className="w-full bg-muted">
                 <SelectValue placeholder="Select a customer" />
@@ -233,7 +226,7 @@ function CreateOrderDialog() {
             </Select>
           </FormField>
 
-          <div className="rounded-2xl border border-border/75 bg-muted/30 px-4 py-4">
+          <div className="rounded-2xl border border-border/75 bg-muted/30 px-4 py-3.5">
             <div className="flex flex-wrap items-center gap-4 text-sm">
               <span className="text-muted-foreground">
                 Customer:{" "}
@@ -255,10 +248,7 @@ function CreateOrderDialog() {
 
           <div className="space-y-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="ledger-kicker">Lines</p>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">Add products and quantities.</p>
-              </div>
+              <p className="ledger-kicker">Items</p>
               <Button type="button" variant="outline" onClick={() => append({ productId: "", quantity: 1 })}>
                 <Plus className="size-4" />
                 Add line
@@ -276,7 +266,7 @@ function CreateOrderDialog() {
                       className="min-w-0"
                       label={`Product ${index + 1}`}
                       htmlFor={`order-item-${index}`}
-                      hint={selectedProduct ? `${selectedProduct.sku} - ${formatMoney(selectedProduct.price)}` : "Choose a product."}
+                      hint={selectedProduct ? `${selectedProduct.sku} / ${formatMoney(selectedProduct.price)}` : undefined}
                       error={
                         form.formState.errors.items?.[index]?.productId?.message ||
                         (line?.isDuplicate ? "Each product can appear only once." : undefined)
@@ -303,7 +293,7 @@ function CreateOrderDialog() {
                       className="min-w-0"
                       label="Qty"
                       htmlFor={`order-quantity-${index}`}
-                      hint={selectedProduct ? `Subtotal ${formatMoney(selectedProduct.price * (line?.quantity ?? 0))}` : "Positive values only."}
+                      hint={selectedProduct ? `Subtotal ${formatMoney(selectedProduct.price * (line?.quantity ?? 0))}` : undefined}
                       error={form.formState.errors.items?.[index]?.quantity?.message}
                     >
                       <Input
@@ -323,9 +313,7 @@ function CreateOrderDialog() {
 
                   {selectedProduct ? (
                     <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                      <span>
-                        Available {line.available === null ? "No inventory" : formatNumber(line.available)}
-                      </span>
+                      <span>Available {line.available === null ? "No inventory" : formatNumber(line.available)}</span>
                       <span>Subtotal {formatMoney(line.subtotal)}</span>
                     </div>
                   ) : null}
@@ -333,9 +321,7 @@ function CreateOrderDialog() {
                   {line?.isOverStock ? (
                     <Alert variant="destructive">
                       <AlertTitle>Insufficient stock</AlertTitle>
-                      <AlertDescription>
-                        Available units: {formatNumber(line.available ?? 0)}.
-                      </AlertDescription>
+                      <AlertDescription>Available units: {formatNumber(line.available ?? 0)}.</AlertDescription>
                     </Alert>
                   ) : null}
                 </div>
@@ -394,14 +380,14 @@ function CancelOrderDialog({
         <DialogHeader className="space-y-2 border-b border-border p-6">
           <DialogTitle>Cancel order #{orderId}</DialogTitle>
           <DialogDescription>
-            This order for <span className="font-medium text-foreground">{customerName}</span> will restore inventory for {formatNumber(itemCount)} line(s).
+            This will restore stock for <span className="font-medium text-foreground">{customerName}</span>.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3 p-6 text-sm leading-7 text-muted-foreground">
           <p>
-            Total amount recorded: <span className="font-medium text-foreground">{formatMoney(totalAmount)}</span>
+            Total: <span className="font-medium text-foreground">{formatMoney(totalAmount)}</span>
           </p>
-          <p>Use this only when the order should be reversed while preserving its history.</p>
+          <p>{formatNumber(itemCount)} line(s) will be returned to inventory.</p>
         </div>
         <DialogFooter className="border-t border-border bg-muted/35 px-6 py-5">
           <Button
@@ -456,18 +442,13 @@ export function OrdersPage() {
     () => orders.filter((order) => order.status === "CREATED").length,
     [orders],
   )
-  const cancelledOrders = orders.length - createdOrders
-  const totalVolume = useMemo(
-    () => orders.reduce((sum, order) => sum + order.totalAmount, 0),
-    [orders],
-  )
 
   return (
     <section className="space-y-6">
       <PageHeader
-        eyebrow="Order flow"
+        eyebrow="Orders"
         title="Orders"
-        description="Create transactional orders, review their contents and cancel valid ones without losing traceability."
+        description="Create, review and cancel orders without leaving the history view."
         meta={<span>{formatNumber(orders.length)} recorded orders</span>}
         actions={<CreateOrderDialog />}
       />
@@ -483,14 +464,8 @@ export function OrdersPage() {
 
       {!query.isLoading && !query.isError ? (
         <>
-          <div className="ledger-reveal grid gap-4 xl:grid-cols-[minmax(0,1.8fr)_repeat(2,minmax(0,1fr))]">
+          <div className="ledger-reveal grid gap-4 xl:grid-cols-[minmax(0,1.9fr)_minmax(0,1fr)]">
             <SectionCard variant="soft" className="space-y-4">
-              <div className="space-y-2">
-                <p className="ledger-kicker">Transaction posture</p>
-                <p className="max-w-2xl text-sm leading-7 text-muted-foreground">
-                  Search by order number, customer or product, then narrow by status when operators need to act quickly.
-                </p>
-              </div>
               <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px]">
                 <div className="relative">
                   <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -528,32 +503,24 @@ export function OrdersPage() {
               </div>
             </SectionCard>
 
-            <MetricCard
-              label="Open orders"
-              value={formatNumber(createdOrders)}
-              detail={`${formatNumber(cancelledOrders)} cancelled orders remain available for reference.`}
-              icon={<ShoppingCart className="size-4" />}
-            />
-            <MetricCard
-              label="Recorded volume"
-              value={formatMoney(totalVolume)}
-              detail="Combined total amount across the current order history."
-              icon={<UserRound className="size-4" />}
-            />
+            <div className="border-t border-foreground/10 pt-4 sm:pt-5">
+              <p className="ledger-kicker">Open orders</p>
+              <p className="text-[1.85rem] font-semibold tracking-[-0.05em] text-foreground">{formatNumber(createdOrders)}</p>
+            </div>
           </div>
 
           {orders.length === 0 ? (
             <EmptyState
               icon={ShoppingCart}
               title="No orders yet"
-              description="Create the first order to validate the end-to-end transactional flow across customers, products and inventory."
+              description="Create the first order to validate the full flow across customers, products and inventory."
               action={<CreateOrderDialog />}
             />
           ) : rows.length === 0 ? (
             <EmptyState
               icon={Search}
               title="No orders match these filters"
-              description="Clear the current filters or try a broader search term to recover the relevant order history."
+              description="Clear the current filters or try a broader search term."
               action={
                 <Button
                   variant="outline"
@@ -590,7 +557,7 @@ export function OrdersPage() {
                           <div className="space-y-1">
                             <p className="font-medium text-foreground">#{order.id}</p>
                             <p className="text-xs text-muted-foreground">
-                              {formatNumber(order.items.length)} lines · {formatNumber(totalUnits)} units
+                              {formatNumber(order.items.length)} lines / {formatNumber(totalUnits)} units
                             </p>
                           </div>
                         </TableCell>
@@ -609,7 +576,7 @@ export function OrdersPage() {
                         <TableCell className="min-w-[320px] whitespace-normal">
                           <div className="space-y-2">
                             {order.items.slice(0, 2).map((item) => (
-                              <div key={item.id} className="rounded-xl border border-border/70 bg-muted/45 px-3 py-3 text-sm">
+                              <div key={item.id} className="rounded-xl border border-border/70 bg-muted/45 px-3 py-2.5 text-sm">
                                 <div className="flex flex-wrap items-center justify-between gap-2">
                                   <div className="space-y-1">
                                     <p className="font-medium text-foreground">{item.productName}</p>
@@ -626,7 +593,7 @@ export function OrdersPage() {
                             ))}
                             {order.items.length > 2 ? (
                               <p className="text-xs text-muted-foreground">
-                                +{formatNumber(order.items.length - 2)} additional lines in this order
+                                +{formatNumber(order.items.length - 2)} more items
                               </p>
                             ) : null}
                           </div>
@@ -641,7 +608,7 @@ export function OrdersPage() {
                               itemCount={order.items.length}
                             />
                           ) : (
-                            <span className="text-xs text-muted-foreground">No actions</span>
+                            <span className="text-xs text-muted-foreground">-</span>
                           )}
                         </TableCell>
                       </TableRow>

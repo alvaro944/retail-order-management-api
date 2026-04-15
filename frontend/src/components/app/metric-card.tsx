@@ -37,7 +37,7 @@ export function MetricCard({
           </div>
         ) : null}
       </div>
-      {detail ? <p className="mt-3 text-sm leading-7 text-muted-foreground">{detail}</p> : null}
+      {detail ? <p className="mt-2 text-sm leading-6 text-muted-foreground">{detail}</p> : null}
     </div>
   )
 }

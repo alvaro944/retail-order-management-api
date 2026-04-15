@@ -26,7 +26,7 @@ export function FormField({
       <div className="flex items-center justify-between gap-3">
         <label
           htmlFor={htmlFor}
-          className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground sm:tracking-[0.18em]"
+          className="text-xs font-medium tracking-[-0.01em] text-foreground"
         >
           {label}
         </label>

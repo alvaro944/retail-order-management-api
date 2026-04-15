@@ -17,7 +17,6 @@ import { z } from "zod"
 import { FormField } from "@/components/app/form-field"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { useAuth } from "@/features/auth/auth-context"
@@ -54,9 +53,7 @@ export function LoginPage() {
         <div className="ledger-panel w-full max-w-xl p-8 text-center">
           <p className="ledger-kicker">Retail Ledger</p>
           <h1 className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-foreground">Restoring your session</h1>
-          <p className="mt-3 text-sm leading-7 text-muted-foreground">
-            Checking secure credentials and loading the operational workspace.
-          </p>
+          <p className="mt-3 text-sm leading-7 text-muted-foreground">Loading your dashboard.</p>
         </div>
       </div>
     )
@@ -85,35 +82,18 @@ export function LoginPage() {
               </div>
               <div>
                 <p className="font-heading text-2xl font-semibold tracking-[-0.05em] text-white">Retail Ledger</p>
-                <p className="text-sm text-white/56">Secured retail operations</p>
+                <p className="text-sm text-white/56">Operational frontend / portfolio demo</p>
               </div>
             </div>
 
-            <div className="space-y-5">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/42">Sign-in gateway</p>
+            <div className="space-y-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/42">Workspace</p>
               <h1 className="max-w-xl text-4xl font-semibold leading-[0.95] tracking-[-0.07em] text-white sm:text-[3.55rem]">
-                Open the retail workspace with the same calm you expect from the operation itself.
+                Retail operations frontend for a Spring Boot portfolio project.
               </h1>
               <p className="max-w-lg text-sm leading-7 text-white/64 sm:text-base">
-                Access a workspace built for products, customers, stock and orders, with JWT authentication and immediate feedback around every action.
+                Sign in with the demo account to review products, customers, inventory and orders with seeded data and real API responses.
               </p>
-            </div>
-
-            <div className="grid gap-3 md:grid-cols-[minmax(0,1.35fr)_repeat(2,minmax(0,1fr))]">
-              <div className="border-t border-white/10 pt-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/42">Workspace posture</p>
-                <p className="mt-2 text-sm leading-7 text-white/78">
-                  A quieter working surface built for catalog review, stock visibility and transactional order flow.
-                </p>
-              </div>
-              <div className="border-t border-white/10 pt-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/42">Inventory</p>
-                <p className="mt-2 text-sm leading-6 text-white/78">Low-stock signals and availability checks.</p>
-              </div>
-              <div className="border-t border-white/10 pt-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/42">Orders</p>
-                <p className="mt-2 text-sm leading-6 text-white/78">Transactional creation and controlled cancellation.</p>
-              </div>
             </div>
           </div>
 
@@ -123,14 +103,12 @@ export function LoginPage() {
                 <ShieldCheck className="size-5 text-white/82" />
               </div>
               <div>
-                <p className="font-medium text-white">Bootstrap credentials ready</p>
-                <p className="text-sm text-white/56">
-                  Demo backend user available for this environment.
-                </p>
+                <p className="font-medium text-white">Demo access</p>
+                <p className="text-sm text-white/56">Use the seeded account to explore the app.</p>
               </div>
             </div>
             <div className="border-t border-white/10 pt-4 text-sm">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/42">Access</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/42">Credentials</p>
               <p className="text-white">admin / admin123</p>
             </div>
           </div>
@@ -140,9 +118,9 @@ export function LoginPage() {
           </div>
         </section>
 
-        <section className="flex items-center justify-center bg-card px-5 py-8 sm:px-8 md:px-12">
-          <Card className="w-full border-0 bg-transparent shadow-none">
-            <CardContent className="space-y-8 p-0">
+        <section className="flex items-center justify-center bg-card px-5 py-8 sm:px-8 md:px-12 lg:px-14">
+          <div className="w-full max-w-[32rem] rounded-[1.8rem] border border-border/75 bg-background/70 p-6 shadow-[0_20px_50px_-36px_rgba(23,35,46,0.2)] sm:p-8 md:p-10">
+            <div className="space-y-8">
               <div className="space-y-3">
                 <div className="flex items-center gap-3 md:hidden">
                   <div className="ledger-primary-gradient flex size-10 items-center justify-center rounded-xl text-primary-foreground">
@@ -150,15 +128,13 @@ export function LoginPage() {
                   </div>
                   <div>
                     <p className="font-heading text-xl font-semibold tracking-[-0.04em]">Retail Ledger</p>
-                    <p className="text-sm text-muted-foreground">Operational console</p>
+                    <p className="text-sm text-muted-foreground">Operational frontend</p>
                   </div>
                 </div>
                 <div>
-                  <p className="ledger-kicker">Secure access</p>
+                  <p className="ledger-kicker">Sign in</p>
                   <h2 className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-foreground">Enter the workspace</h2>
-                  <p className="mt-2 text-sm leading-7 text-muted-foreground">
-                    Use a valid backend account to open the operational frontend and keep working with the current API contracts.
-                  </p>
+                  <p className="mt-2 text-sm leading-7 text-muted-foreground">Use the demo account or any valid backend user for this portfolio project.</p>
                 </div>
               </div>
 
@@ -171,12 +147,7 @@ export function LoginPage() {
               ) : null}
 
               <form className="space-y-5" onSubmit={form.handleSubmit(handleSubmit)}>
-                <FormField
-                  label="Username"
-                  htmlFor="username"
-                  hint="Use the backend bootstrap account or any valid authenticated user."
-                  error={form.formState.errors.username?.message}
-                >
+                <FormField label="Username" htmlFor="username" error={form.formState.errors.username?.message}>
                   <div className="relative">
                     <UserRound className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
@@ -189,12 +160,7 @@ export function LoginPage() {
                   </div>
                 </FormField>
 
-                <FormField
-                  label="Password"
-                  htmlFor="password"
-                  hint="Credentials are sent to the existing JWT login endpoint."
-                  error={form.formState.errors.password?.message}
-                >
+                <FormField label="Password" htmlFor="password" error={form.formState.errors.password?.message}>
                   <div className="relative">
                     <KeyRound className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
@@ -231,12 +197,12 @@ export function LoginPage() {
                 <div className="rounded-[1rem] border border-border/80 bg-background/80 px-4 py-3 text-sm text-muted-foreground">
                   <div className="flex items-center gap-2 text-foreground">
                     <LockKeyhole className="size-4 text-primary" />
-                    Session persistence is stored only on this device when you keep the session active.
+                    The session is only kept on this device when you enable it.
                   </div>
                 </div>
               </form>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </section>
       </div>
     </div>

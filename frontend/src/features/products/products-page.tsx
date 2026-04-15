@@ -2,7 +2,7 @@ import { useMemo, useState } from "react"
 
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { PackagePlus, PencilLine, Search, Tag, Trash2 } from "lucide-react"
+import { PackagePlus, PencilLine, Search, Trash2 } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { toast } from "sonner"
@@ -35,7 +35,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { getProblemDetailMessage } from "@/lib/api/problem-detail"
-import { formatDateTime, formatMoney, formatNumber } from "@/lib/format"
+import { formatMoney, formatNumber } from "@/lib/format"
 import { createProduct, deleteProduct, getProducts, productQueryKey, updateProduct } from "@/features/products/api"
 import { buildProductPayload } from "@/features/products/product-payload"
 
@@ -64,36 +64,16 @@ function ProductFormFields({
 }) {
   return (
     <>
-      <FormField
-        label="Name"
-        htmlFor={nameId}
-        hint="Use the commercial name shown to operators and downstream order snapshots."
-        error={form.formState.errors.name?.message}
-      >
+      <FormField label="Name" htmlFor={nameId} error={form.formState.errors.name?.message}>
         <Input id={nameId} className="bg-muted" {...form.register("name")} />
       </FormField>
-      <FormField
-        label="SKU"
-        htmlFor={skuId}
-        hint="Must remain unique across active products."
-        error={form.formState.errors.sku?.message}
-      >
+      <FormField label="SKU" htmlFor={skuId} error={form.formState.errors.sku?.message}>
         <Input id={skuId} className="bg-muted" {...form.register("sku")} />
       </FormField>
-      <FormField
-        label="Price"
-        htmlFor={priceId}
-        hint="Use the unit sale price expected by the current API."
-        error={form.formState.errors.price?.message}
-      >
+      <FormField label="Price" htmlFor={priceId} error={form.formState.errors.price?.message}>
         <Input id={priceId} type="number" step="0.01" className="bg-muted" {...form.register("price")} />
       </FormField>
-      <FormField
-        label="Description"
-        htmlFor={descriptionId}
-        hint="Optional, but useful when the catalog grows and operators need more context."
-        error={form.formState.errors.description?.message}
-      >
+      <FormField label="Description" htmlFor={descriptionId} error={form.formState.errors.description?.message}>
         <textarea
           id={descriptionId}
           className="min-h-28 w-full rounded-xl border border-input bg-muted px-3.5 py-3 text-sm outline-none transition-[border-color,box-shadow] duration-200 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
@@ -144,9 +124,7 @@ function CreateProductSheet() {
       <SheetContent className="w-full max-w-xl overflow-y-auto border-l border-border bg-card">
         <SheetHeader className="space-y-2 border-b border-border p-6">
           <SheetTitle>Create product</SheetTitle>
-          <p className="text-sm leading-7 text-muted-foreground">
-            Add a new active catalog item. The backend will preserve the current SKU and validation rules.
-          </p>
+          <p className="text-sm leading-7 text-muted-foreground">Add a new item to the catalog.</p>
         </SheetHeader>
         <form className="space-y-5 p-6" onSubmit={submit}>
           <ProductFormFields
@@ -224,7 +202,7 @@ function EditProductDialog({
         <DialogHeader className="space-y-2 border-b border-border p-6">
           <DialogTitle>Edit product</DialogTitle>
           <DialogDescription>
-            Update the catalog details for <span className="font-medium text-foreground">{name}</span> without leaving the list.
+            Update <span className="font-medium text-foreground">{name}</span> without leaving the list.
           </DialogDescription>
         </DialogHeader>
         <form
@@ -282,14 +260,13 @@ function DeactivateProductDialog({
       </DialogTrigger>
       <DialogContent className="max-w-md rounded-[1.5rem] bg-card p-0">
         <DialogHeader className="space-y-2 border-b border-border p-6">
-          <DialogTitle>Remove active product</DialogTitle>
+          <DialogTitle>Remove product</DialogTitle>
           <DialogDescription>
-            <span className="font-medium text-foreground">{name}</span> will be hidden from active reads. If inventory exists, the backend will block the action.
+            <span className="font-medium text-foreground">{name}</span> will be removed from the active catalog.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3 p-6 text-sm leading-7 text-muted-foreground">
-          <p>Use this when the product should leave the working catalog without affecting historical order snapshots.</p>
-          <p>The backend handles this as a soft delete, not as a hard removal.</p>
+          <p>If the product still has inventory, the action will be blocked.</p>
         </div>
         <DialogFooter className="border-t border-border bg-muted/35 px-6 py-5">
           <Button variant="outline" onClick={() => setOpen(false)}>
@@ -336,23 +313,14 @@ export function ProductsPage() {
     )
   }, [products, search])
 
-  const totalValue = useMemo(
-    () => products.reduce((sum, product) => sum + product.price, 0),
-    [products],
-  )
-  const describedProducts = useMemo(
-    () => products.filter((product) => Boolean(product.description?.trim())).length,
-    [products],
-  )
-
   const hasActiveFilters = search.trim().length > 0
 
   return (
     <section className="space-y-6">
       <PageHeader
-        eyebrow="Product catalog"
+        eyebrow="Catalog"
         title="Products"
-        description="Review the active catalog, search with more context and keep product data current without leaving the working view."
+        description="Search, add and update products in one place."
         meta={<span>{formatNumber(products.length)} active records</span>}
         actions={<CreateProductSheet />}
       />
@@ -368,14 +336,8 @@ export function ProductsPage() {
 
       {!query.isLoading && !query.isError ? (
         <>
-          <div className="ledger-reveal grid gap-4 xl:grid-cols-[minmax(0,1.7fr)_repeat(2,minmax(0,1fr))]">
+          <div className="ledger-reveal grid gap-4 xl:grid-cols-[minmax(0,1.9fr)_minmax(0,1fr)]">
             <SectionCard variant="soft" className="space-y-4">
-              <div className="space-y-2">
-                <p className="ledger-kicker">Catalog posture</p>
-                <p className="max-w-2xl text-sm leading-7 text-muted-foreground">
-                  Search by name, SKU or description to review the active catalog quickly, then edit or retire products in place.
-                </p>
-              </div>
               <div className="relative max-w-xl">
                 <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
@@ -398,14 +360,7 @@ export function ProductsPage() {
             <MetricCard
               label="Catalog size"
               value={formatNumber(products.length)}
-              detail="Active products currently available through the API."
               icon={<PackagePlus className="size-4" />}
-            />
-            <MetricCard
-              label="Average ticket base"
-              value={products.length > 0 ? formatMoney(totalValue / products.length) : formatMoney(0)}
-              detail={`${formatNumber(describedProducts)} products already include descriptive context.`}
-              icon={<Tag className="size-4" />}
             />
           </div>
 
@@ -413,14 +368,14 @@ export function ProductsPage() {
             <EmptyState
               icon={PackagePlus}
               title="No products yet"
-              description="Create the first catalog item to start using inventory and order workflows with real product data."
+              description="Create the first product to start using inventory and orders."
               action={<CreateProductSheet />}
             />
           ) : rows.length === 0 ? (
             <EmptyState
               icon={Search}
               title="No products match this search"
-              description="Try a broader name, SKU or description fragment, or clear the current filter to see the full catalog again."
+              description="Try a broader term or clear the search."
               action={
                 <Button variant="outline" onClick={() => setSearch("")}>
                   Clear search
@@ -436,7 +391,6 @@ export function ProductsPage() {
                     <TableHead>SKU</TableHead>
                     <TableHead>Description</TableHead>
                     <TableHead>Price</TableHead>
-                    <TableHead>Created</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -444,17 +398,13 @@ export function ProductsPage() {
                   {rows.map((product) => (
                     <TableRow key={product.id}>
                       <TableCell className="min-w-[220px]">
-                        <div className="space-y-1">
-                          <p className="font-medium text-foreground">{product.name}</p>
-                          <p className="text-xs text-muted-foreground">Product #{product.id}</p>
-                        </div>
+                        <p className="font-medium text-foreground">{product.name}</p>
                       </TableCell>
                       <TableCell className="font-medium text-foreground">{product.sku}</TableCell>
                       <TableCell className="max-w-[380px] whitespace-normal text-sm leading-6 text-muted-foreground">
-                        {product.description || "No operational description yet."}
+                        {product.description || "No description"}
                       </TableCell>
                       <TableCell className="font-medium text-foreground">{formatMoney(product.price)}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{formatDateTime(product.createdAt)}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
                           <EditProductDialog
