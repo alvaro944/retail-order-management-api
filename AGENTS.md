@@ -170,6 +170,24 @@ docker compose up --build
 docker compose down
 ```
 
+Development profile environment variables:
+
+```bash
+RETAIL_DB_HOST=localhost
+RETAIL_DB_PORT=5432
+RETAIL_DB_NAME=retail_order_management
+RETAIL_DB_USERNAME=postgres
+RETAIL_DB_PASSWORD=postgres
+APP_DEMO_SEED_ENABLED=true
+```
+
+Development demo data behavior:
+
+- The `dev` profile can automatically seed demo data when the database is empty.
+- The demo seed creates sample products, customers, inventory, and orders.
+- The seeded orders include both `CREATED` and `CANCELLED` examples.
+- Disable the seed with `APP_DEMO_SEED_ENABLED=false` when needed.
+
 Phase 7B auth manual verification:
 
 ```text

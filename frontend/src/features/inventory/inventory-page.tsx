@@ -2,18 +2,29 @@ import { useMemo, useState } from "react"
 
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Search, Warehouse, Wrench } from "lucide-react"
+import { AlertTriangle, PencilLine, Search, Warehouse, Wrench } from "lucide-react"
 import { useForm, useWatch } from "react-hook-form"
 import { z } from "zod"
 import { toast } from "sonner"
 
 import { EmptyState } from "@/components/app/empty-state"
 import { FormField } from "@/components/app/form-field"
+import { MetricCard } from "@/components/app/metric-card"
 import { LoadingBlock } from "@/components/app/loading-block"
 import { PageHeader } from "@/components/app/page-header"
+import { SectionCard } from "@/components/app/section-card"
 import { StatusBadge } from "@/components/app/status-badge"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
@@ -26,8 +37,15 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { getProblemDetailMessage } from "@/lib/api/problem-detail"
-import { formatDateTime } from "@/lib/format"
-import { createInventory, getInventory, inventoryQueryKey } from "@/features/inventory/api"
+import { formatDateTime, formatNumber } from "@/lib/format"
+import {
+  adjustInventory,
+  createInventory,
+  getInventory,
+  inventoryQueryKey,
+  updateInventory,
+} from "@/features/inventory/api"
+import { getInventoryAdjustmentFromTarget } from "@/features/inventory/inventory-utils"
 import { getProducts, productQueryKey } from "@/features/products/api"
 
 const schema = z.object({
@@ -37,6 +55,13 @@ const schema = z.object({
 })
 
 type FormValues = z.output<typeof schema>
+
+const editInventorySchema = z.object({
+  desiredQuantity: z.coerce.number().min(0, "Quantity must be zero or greater"),
+  minimumStock: z.coerce.number().min(0, "Minimum stock must be zero or greater"),
+})
+
+type EditInventoryValues = z.output<typeof editInventorySchema>
 
 function CreateInventorySheet() {
   const [open, setOpen] = useState(false)
@@ -60,7 +85,7 @@ function CreateInventorySheet() {
     mutationFn: createInventory,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: inventoryQueryKey })
-      toast.success("Inventory created")
+      toast.success("Inventory record created successfully.")
       setOpen(false)
       form.reset()
     },
@@ -83,41 +108,56 @@ function CreateInventorySheet() {
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger render={<Button className="h-10 rounded-md ledger-primary-gradient text-primary-foreground" />}>
+      <SheetTrigger render={<Button className="ledger-primary-gradient text-primary-foreground" />}>
         <Wrench className="size-4" />
-        Create inventory
+        New inventory record
       </SheetTrigger>
       <SheetContent className="w-full max-w-xl overflow-y-auto border-l border-border bg-card">
-        <SheetHeader className="space-y-2 border-b border-border">
+        <SheetHeader className="space-y-2 border-b border-border p-6">
           <SheetTitle>Create inventory</SheetTitle>
-          <p className="text-sm text-muted-foreground">
-            Crea el único registro de inventario permitido para un producto activo.
+          <p className="text-sm leading-7 text-muted-foreground">
+            Create the single inventory record allowed for an active product in the current backend model.
           </p>
         </SheetHeader>
-        <form className="space-y-5 p-4" onSubmit={submit}>
-          <FormField label="Product" htmlFor="inventory-product" error={form.formState.errors.productId?.message}>
+        <form className="space-y-5 p-6" onSubmit={submit}>
+          <FormField
+            label="Product"
+            htmlFor="inventory-product"
+            hint="Only active products without inventory should be selected."
+            error={form.formState.errors.productId?.message}
+          >
             <Select value={selectedProductId} onValueChange={(value) => form.setValue("productId", value ?? "")}>
-              <SelectTrigger id="inventory-product" className="h-11 w-full bg-muted">
+              <SelectTrigger id="inventory-product" className="w-full bg-muted">
                 <SelectValue placeholder="Select a product" />
               </SelectTrigger>
               <SelectContent>
                 {(productsQuery.data ?? []).map((product) => (
                   <SelectItem key={product.id} value={String(product.id)}>
-                    {product.name} · {product.sku}
+                    {product.name} - {product.sku}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </FormField>
-          <FormField label="Quantity available" htmlFor="inventory-quantity" error={form.formState.errors.quantityAvailable?.message}>
-            <Input id="inventory-quantity" type="number" className="h-11 bg-muted" {...form.register("quantityAvailable")} />
+          <FormField
+            label="Quantity available"
+            htmlFor="inventory-quantity"
+            hint="This value is used immediately by order creation validations."
+            error={form.formState.errors.quantityAvailable?.message}
+          >
+            <Input id="inventory-quantity" type="number" className="bg-muted" {...form.register("quantityAvailable")} />
           </FormField>
-          <FormField label="Minimum stock" htmlFor="inventory-minimum" error={form.formState.errors.minimumStock?.message as string | undefined}>
-            <Input id="inventory-minimum" type="number" className="h-11 bg-muted" {...form.register("minimumStock")} />
+          <FormField
+            label="Minimum stock"
+            htmlFor="inventory-minimum"
+            hint="Optional threshold to surface low-stock products faster."
+            error={form.formState.errors.minimumStock?.message as string | undefined}
+          >
+            <Input id="inventory-minimum" type="number" className="bg-muted" {...form.register("minimumStock")} />
           </FormField>
-          <SheetFooter className="border-t border-border bg-muted/40">
+          <SheetFooter className="border-t border-border bg-muted/35 p-6">
             <Button type="submit" className="ledger-primary-gradient text-primary-foreground" disabled={mutation.isPending}>
-              {mutation.isPending ? "Saving..." : "Save inventory"}
+              {mutation.isPending ? "Saving inventory..." : "Save inventory"}
             </Button>
           </SheetFooter>
         </form>
@@ -126,99 +166,357 @@ function CreateInventorySheet() {
   )
 }
 
+function EditInventoryDialog({
+  inventoryId,
+  productName,
+  currentQuantity,
+  currentMinimumStock,
+}: {
+  inventoryId: number
+  productName: string
+  currentQuantity: number
+  currentMinimumStock: number | null
+}) {
+  const [open, setOpen] = useState(false)
+  const queryClient = useQueryClient()
+  const form = useForm<z.input<typeof editInventorySchema>, unknown, EditInventoryValues>({
+    resolver: zodResolver(editInventorySchema),
+    defaultValues: {
+      desiredQuantity: currentQuantity,
+      minimumStock: currentMinimumStock ?? 0,
+    },
+  })
+  const desiredQuantity = useWatch({ control: form.control, name: "desiredQuantity" }) ?? currentQuantity
+  const minimumStock = useWatch({ control: form.control, name: "minimumStock" }) ?? (currentMinimumStock ?? 0)
+  const normalizedDesiredQuantity = Number(desiredQuantity) || 0
+  const normalizedMinimumStock = Number(minimumStock) || 0
+  const quantityDelta = normalizedDesiredQuantity - currentQuantity
+  const hasQuantityChange = normalizedDesiredQuantity !== currentQuantity
+  const hasMinimumStockChange = normalizedMinimumStock !== (currentMinimumStock ?? 0)
+
+  const mutation = useMutation({
+    mutationFn: async (values: EditInventoryValues) => {
+      const operations: Promise<unknown>[] = []
+      const quantityAdjustment = getInventoryAdjustmentFromTarget(currentQuantity, values.desiredQuantity)
+
+      if (quantityAdjustment) {
+        operations.push(adjustInventory(inventoryId, quantityAdjustment))
+      }
+
+      if (values.minimumStock !== (currentMinimumStock ?? 0)) {
+        operations.push(updateInventory(inventoryId, { minimumStock: values.minimumStock }))
+      }
+
+      await Promise.all(operations)
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: inventoryQueryKey })
+      toast.success("Inventory updated successfully.")
+      setOpen(false)
+    },
+  })
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen)
+        if (nextOpen) {
+          form.reset({
+            desiredQuantity: currentQuantity,
+            minimumStock: currentMinimumStock ?? 0,
+          })
+        }
+      }}
+    >
+      <DialogTrigger render={<Button variant="outline" size="sm" />}>
+        <PencilLine className="size-4" />
+        Edit stock
+      </DialogTrigger>
+      <DialogContent className="max-w-lg rounded-[1.5rem] bg-card p-0">
+        <DialogHeader className="space-y-2 border-b border-border p-6">
+          <DialogTitle>Edit inventory</DialogTitle>
+          <DialogDescription>
+            Set the final quantity and reorder threshold for <span className="font-medium text-foreground">{productName}</span> in one place.
+          </DialogDescription>
+        </DialogHeader>
+        <form
+          className="space-y-5 p-6"
+          onSubmit={form.handleSubmit(async (values) => {
+            try {
+              await mutation.mutateAsync(values)
+            } catch (error) {
+              toast.error(getProblemDetailMessage(error, "Inventory could not be updated."))
+            }
+          })}
+        >
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="border-t border-border/80 pt-3">
+              <p className="ledger-kicker">Current quantity</p>
+              <p className="mt-2 text-2xl font-semibold tracking-[-0.05em] text-foreground">
+                {formatNumber(currentQuantity)}
+              </p>
+            </div>
+            <div className="border-t border-border/80 pt-3">
+              <p className="ledger-kicker">Target quantity</p>
+              <p className="mt-2 text-2xl font-semibold tracking-[-0.05em] text-foreground">
+                {formatNumber(normalizedDesiredQuantity)}
+              </p>
+            </div>
+          </div>
+
+          {hasQuantityChange ? (
+            <div className="rounded-[1rem] border border-border/80 bg-muted/55 px-4 py-3 text-sm text-muted-foreground">
+              {quantityDelta > 0
+                ? `This will increase stock by ${formatNumber(quantityDelta)} units.`
+                : `This will decrease stock by ${formatNumber(Math.abs(quantityDelta))} units.`}
+            </div>
+          ) : null}
+
+          <FormField
+            label="Quantity available"
+            htmlFor={`desired-quantity-${inventoryId}`}
+            hint="Enter the final quantity you want this inventory record to have after saving."
+            error={form.formState.errors.desiredQuantity?.message}
+          >
+            <Input
+              id={`desired-quantity-${inventoryId}`}
+              type="number"
+              className="bg-muted"
+              {...form.register("desiredQuantity")}
+            />
+          </FormField>
+
+          <FormField
+            label="Minimum stock"
+            htmlFor={`minimum-stock-${inventoryId}`}
+            hint="Keep the low-stock threshold here so both stock values are updated from the same popup."
+            error={form.formState.errors.minimumStock?.message}
+          >
+            <Input
+              id={`minimum-stock-${inventoryId}`}
+              type="number"
+              className="bg-muted"
+              {...form.register("minimumStock")}
+            />
+          </FormField>
+
+          <DialogFooter className="border-t border-border bg-muted/35 px-6 py-5">
+            <Button
+              type="submit"
+              className="ledger-primary-gradient text-primary-foreground"
+              disabled={mutation.isPending || (!hasQuantityChange && !hasMinimumStockChange)}
+            >
+              {mutation.isPending ? "Saving..." : "Save changes"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 export function InventoryPage() {
   const [search, setSearch] = useState("")
+  const [statusFilter, setStatusFilter] = useState<"ALL" | "LOW" | "HEALTHY">("ALL")
   const query = useQuery({
     queryKey: inventoryQueryKey,
     queryFn: getInventory,
   })
 
+  const inventory = useMemo(() => query.data ?? [], [query.data])
+
   const rows = useMemo(() => {
     const normalized = search.trim().toLowerCase()
-    if (!normalized) {
-      return query.data ?? []
-    }
 
-    return (query.data ?? []).filter((inventory) =>
-      [inventory.product.name, inventory.product.sku].some((value) =>
-        value.toLowerCase().includes(normalized),
-      ),
-    )
-  }, [query.data, search])
+    return inventory.filter((item) => {
+      const isLowStock =
+        item.minimumStock !== null && item.quantityAvailable <= item.minimumStock
+
+      const matchesSearch =
+        !normalized ||
+        [item.product.name, item.product.sku].some((value) => value.toLowerCase().includes(normalized))
+
+      const matchesStatus =
+        statusFilter === "ALL" ||
+        (statusFilter === "LOW" && isLowStock) ||
+        (statusFilter === "HEALTHY" && !isLowStock)
+
+      return matchesSearch && matchesStatus
+    })
+  }, [inventory, search, statusFilter])
+
+  const lowStockCount = useMemo(
+    () =>
+      inventory.filter(
+        (item) => item.minimumStock !== null && item.quantityAvailable <= item.minimumStock,
+      ).length,
+    [inventory],
+  )
+  const totalUnits = useMemo(
+    () => inventory.reduce((sum, item) => sum + item.quantityAvailable, 0),
+    [inventory],
+  )
 
   return (
     <section className="space-y-6">
       <PageHeader
         eyebrow="Inventory control"
         title="Inventory"
-        description="Supervisa disponibilidad actual, stock mínimo y salud de inventario por producto activo."
+        description="Track stock levels, highlight risk sooner and keep operators aligned with current order availability."
+        meta={<span>{formatNumber(inventory.length)} tracked products</span>}
         actions={<CreateInventorySheet />}
       />
-
-      <div className="rounded-2xl bg-card p-5 ledger-shadow ledger-ghost-border">
-        <div className="relative max-w-md">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search by product name or SKU"
-            className="h-11 bg-muted pl-10"
-          />
-        </div>
-      </div>
 
       {query.isLoading ? <LoadingBlock /> : null}
 
       {query.isError ? (
-        <Alert className="border-destructive/20 bg-destructive/5 text-destructive">
+        <Alert variant="destructive">
           <AlertTitle>Inventory could not be loaded</AlertTitle>
-          <AlertDescription>{getProblemDetailMessage(query.error, "Retry after checking the backend connection.")}</AlertDescription>
+          <AlertDescription>{getProblemDetailMessage(query.error, "Check the backend connection and try again.")}</AlertDescription>
         </Alert>
       ) : null}
 
-      {!query.isLoading && !query.isError && rows.length === 0 ? (
-        <EmptyState
-          icon={Warehouse}
-          title="No inventory records yet"
-          description="Create inventory for an active product to start monitoring available stock and minimum thresholds."
-        />
-      ) : null}
+      {!query.isLoading && !query.isError ? (
+        <>
+          <div className="ledger-reveal grid gap-4 xl:grid-cols-[minmax(0,1.8fr)_repeat(2,minmax(0,1fr))]">
+            <SectionCard variant="soft" className="space-y-4">
+              <div className="space-y-2">
+                <p className="ledger-kicker">Stock posture</p>
+                <p className="max-w-2xl text-sm leading-7 text-muted-foreground">
+                  Narrow the stock view by product name, SKU or low-stock risk to focus attention where replenishment pressure is higher.
+                </p>
+              </div>
+              <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px]">
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    placeholder="Search by product name or SKU"
+                    className="bg-muted pl-10"
+                  />
+                </div>
+                <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as "ALL" | "LOW" | "HEALTHY")}>
+                  <SelectTrigger className="w-full bg-muted">
+                    <SelectValue placeholder="Filter by stock status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">All records</SelectItem>
+                    <SelectItem value="LOW">Low stock only</SelectItem>
+                    <SelectItem value="HEALTHY">Healthy only</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                <span>{formatNumber(rows.length)} visible results</span>
+                {(search.trim() || statusFilter !== "ALL") ? (
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      setSearch("")
+                      setStatusFilter("ALL")
+                    }}
+                  >
+                    Clear filters
+                  </Button>
+                ) : null}
+              </div>
+            </SectionCard>
 
-      {!query.isLoading && !query.isError && rows.length > 0 ? (
-        <div className="overflow-hidden rounded-2xl bg-card ledger-shadow ledger-ghost-border">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/50">
-                <TableHead>Product</TableHead>
-                <TableHead>SKU</TableHead>
-                <TableHead>Available</TableHead>
-                <TableHead>Minimum</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Updated</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.map((inventory) => {
-                const isLowStock =
-                  inventory.minimumStock !== null &&
-                  inventory.quantityAvailable <= inventory.minimumStock
+            <MetricCard
+              label="Units available"
+              value={formatNumber(totalUnits)}
+              detail="Total current stock across all tracked products."
+              icon={<Warehouse className="size-4" />}
+            />
+            <MetricCard
+              label="Low-stock products"
+              value={formatNumber(lowStockCount)}
+              detail="Products at or below their configured minimum threshold."
+              icon={<AlertTriangle className="size-4" />}
+              accent={lowStockCount > 0 ? "danger" : "default"}
+            />
+          </div>
 
-                return (
-                  <TableRow key={inventory.id}>
-                    <TableCell className="font-medium">{inventory.product.name}</TableCell>
-                    <TableCell>{inventory.product.sku}</TableCell>
-                    <TableCell>{inventory.quantityAvailable}</TableCell>
-                    <TableCell>{inventory.minimumStock ?? "—"}</TableCell>
-                    <TableCell>
-                      <StatusBadge status={isLowStock ? "LOW" : "HEALTHY"} />
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">{formatDateTime(inventory.updatedAt)}</TableCell>
+          {inventory.length === 0 ? (
+            <EmptyState
+              icon={Warehouse}
+              title="No inventory records yet"
+              description="Create inventory for an active product to start monitoring availability and detect low-stock conditions sooner."
+              action={<CreateInventorySheet />}
+            />
+          ) : rows.length === 0 ? (
+            <EmptyState
+              icon={Search}
+              title="No inventory records match these filters"
+              description="Clear the current filters to recover the full stock view or try a broader product search."
+              action={
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setSearch("")
+                    setStatusFilter("ALL")
+                  }}
+                >
+                  Clear filters
+                </Button>
+              }
+            />
+          ) : (
+            <SectionCard variant="bare" className="ledger-reveal overflow-hidden p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Product</TableHead>
+                    <TableHead>SKU</TableHead>
+                    <TableHead>Available</TableHead>
+                    <TableHead>Minimum</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Updated</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
-                )
-              })}
-            </TableBody>
-          </Table>
-        </div>
+                </TableHeader>
+                <TableBody>
+                  {rows.map((item) => {
+                    const isLowStock =
+                      item.minimumStock !== null && item.quantityAvailable <= item.minimumStock
+
+                    return (
+                      <TableRow key={item.id}>
+                        <TableCell className="min-w-[220px]">
+                          <div className="space-y-1">
+                            <p className="font-medium text-foreground">{item.product.name}</p>
+                            <p className="text-xs text-muted-foreground">Inventory #{item.id}</p>
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-medium text-foreground">{item.product.sku}</TableCell>
+                        <TableCell className="font-medium text-foreground">{formatNumber(item.quantityAvailable)}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {item.minimumStock ?? "No threshold"}
+                        </TableCell>
+                        <TableCell>
+                          <StatusBadge status={isLowStock ? "LOW" : "HEALTHY"} />
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{formatDateTime(item.updatedAt)}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <EditInventoryDialog
+                              inventoryId={item.id}
+                              productName={item.product.name}
+                              currentQuantity={item.quantityAvailable}
+                              currentMinimumStock={item.minimumStock}
+                            />
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+            </SectionCard>
+          )}
+        </>
       ) : null}
     </section>
   )

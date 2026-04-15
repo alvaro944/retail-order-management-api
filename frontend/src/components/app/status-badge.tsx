@@ -5,7 +5,7 @@ export function StatusBadge({ status }: { status: string }) {
 
   if (normalized === "CANCELLED") {
     return (
-      <Badge className="bg-destructive/10 text-destructive hover:bg-destructive/10">
+      <Badge className="border border-destructive/15 bg-destructive/10 text-destructive hover:bg-destructive/10">
         Cancelled
       </Badge>
     )
@@ -13,14 +13,14 @@ export function StatusBadge({ status }: { status: string }) {
 
   if (normalized === "LOW") {
     return (
-      <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">
+      <Badge className="border border-amber-200/70 bg-amber-50 text-amber-900 hover:bg-amber-50">
         Low stock
       </Badge>
     )
   }
 
   return (
-    <Badge className="bg-primary/10 text-primary hover:bg-primary/10">
+    <Badge className="border border-primary/12 bg-primary/8 text-primary hover:bg-primary/8">
       {normalized === "CREATED" ? "Created" : "Healthy"}
     </Badge>
   )

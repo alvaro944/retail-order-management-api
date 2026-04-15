@@ -1,5 +1,5 @@
 import { api } from "@/lib/api/client"
-import type { CustomerCreateRequest, CustomerResponse } from "@/lib/types"
+import type { CustomerCreateRequest, CustomerResponse, CustomerUpdateRequest } from "@/lib/types"
 
 export const customerQueryKey = ["customers"]
 
@@ -11,4 +11,13 @@ export async function getCustomers() {
 export async function createCustomer(request: CustomerCreateRequest) {
   const { data } = await api.post<CustomerResponse>("/customers", request)
   return data
+}
+
+export async function updateCustomer(id: number, request: CustomerUpdateRequest) {
+  const { data } = await api.put<CustomerResponse>(`/customers/${id}`, request)
+  return data
+}
+
+export async function deleteCustomer(id: number) {
+  await api.delete(`/customers/${id}`)
 }

@@ -164,11 +164,11 @@ For future coding chats, see `AGENTS.md`. It documents:
 The `dev` profile uses PostgreSQL and reads its connection details from environment variables:
 
 ```bash
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=retail_order_management
-DB_USERNAME=postgres
-DB_PASSWORD=postgres
+RETAIL_DB_HOST=localhost
+RETAIL_DB_PORT=5432
+RETAIL_DB_NAME=retail_order_management
+RETAIL_DB_USERNAME=postgres
+RETAIL_DB_PASSWORD=postgres
 SERVER_PORT=8080
 APP_SECURITY_JWT_SECRET=changeit-changeit-changeit-changeit
 APP_SECURITY_JWT_ISSUER=retail-order-management-api
@@ -176,6 +176,7 @@ APP_SECURITY_JWT_EXPIRATION_MINUTES=60
 APP_SECURITY_BOOTSTRAP_USERNAME=admin
 APP_SECURITY_BOOTSTRAP_PASSWORD=admin123
 APP_SECURITY_BOOTSTRAP_ROLE=ADMIN
+APP_DEMO_SEED_ENABLED=true
 ```
 
 The bootstrap user is intended for local development and manual verification in Phase 7B. Override those defaults through environment variables outside local development.
@@ -221,11 +222,11 @@ The PostgreSQL data is stored in the named volume `postgres-data` so local data 
 The Docker stack uses the same `dev` profile and the same environment variables already supported by the application:
 
 ```bash
-DB_HOST=db
-DB_PORT=5432
-DB_NAME=retail_order_management
-DB_USERNAME=postgres
-DB_PASSWORD=postgres
+RETAIL_DB_HOST=db
+RETAIL_DB_PORT=5432
+RETAIL_DB_NAME=retail_order_management
+RETAIL_DB_USERNAME=postgres
+RETAIL_DB_PASSWORD=postgres
 SERVER_PORT=8080
 APP_SECURITY_JWT_SECRET=changeit-changeit-changeit-changeit
 APP_SECURITY_JWT_ISSUER=retail-order-management-api
@@ -233,9 +234,11 @@ APP_SECURITY_JWT_EXPIRATION_MINUTES=60
 APP_SECURITY_BOOTSTRAP_USERNAME=admin
 APP_SECURITY_BOOTSTRAP_PASSWORD=admin123
 APP_SECURITY_BOOTSTRAP_ROLE=ADMIN
+APP_DEMO_SEED_ENABLED=true
 ```
+Inside Docker Compose, `RETAIL_DB_HOST` is fixed to the `db` service. The remaining values can be overridden from your shell or a local `.env` file before running `docker compose up`.
 
-Inside Docker Compose, `DB_HOST` is fixed to the `db` service. The remaining values can be overridden from your shell or a local `.env` file before running `docker compose up`.
+When the application starts with the `dev` profile and the database is empty, it now loads a small demo dataset automatically. That seed creates sample products, customers, inventory records, and demo orders, including a cancelled order so the frontend is not blank on first run. Disable it by setting `APP_DEMO_SEED_ENABLED=false`.
 
 On Windows PowerShell, `curl` is usually an alias for `Invoke-WebRequest`, not the Unix `curl` CLI. That means flags such as `-X`, `-H`, and `-d` will not behave the same way unless you call `curl.exe` explicitly. For PowerShell-first smoke tests, prefer `Invoke-WebRequest` with `-Method`, `-ContentType`, and `-Body`.
 

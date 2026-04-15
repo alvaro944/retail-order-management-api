@@ -26,15 +26,15 @@ export function FormField({
       <div className="flex items-center justify-between gap-3">
         <label
           htmlFor={htmlFor}
-          className="text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground"
+          className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground sm:tracking-[0.18em]"
         >
           {label}
         </label>
         {actions}
       </div>
       {children}
-      {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
-      {error ? <p className="text-xs font-medium text-destructive">{error}</p> : null}
+      {hint ? <p className="text-[13px] leading-5 text-muted-foreground">{hint}</p> : null}
+      {error ? <p className="text-[13px] font-medium text-destructive">{error}</p> : null}
     </div>
   )
 }

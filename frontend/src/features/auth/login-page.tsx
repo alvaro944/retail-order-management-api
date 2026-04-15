@@ -1,7 +1,15 @@
 import { useState } from "react"
 
 import { zodResolver } from "@hookform/resolvers/zod"
-import { AlertCircle, ArrowRight, Building2, LockKeyhole, UserRound } from "lucide-react"
+import {
+  AlertCircle,
+  ArrowRight,
+  Building2,
+  KeyRound,
+  LockKeyhole,
+  ShieldCheck,
+  UserRound,
+} from "lucide-react"
 import { useForm, useWatch } from "react-hook-form"
 import { Navigate } from "react-router-dom"
 import { z } from "zod"
@@ -40,6 +48,20 @@ export function LoginPage() {
     return <Navigate to="/products" replace />
   }
 
+  if (isInitializing) {
+    return (
+      <div className="flex min-h-[100dvh] items-center justify-center px-4 py-8">
+        <div className="ledger-panel w-full max-w-xl p-8 text-center">
+          <p className="ledger-kicker">Retail Ledger</p>
+          <h1 className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-foreground">Restoring your session</h1>
+          <p className="mt-3 text-sm leading-7 text-muted-foreground">
+            Checking secure credentials and loading the operational workspace.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   async function handleSubmit(values: LoginFormValues) {
     setSubmitError(null)
     try {
@@ -48,81 +70,100 @@ export function LoginPage() {
         password: values.password,
       })
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : "No se pudo iniciar sesión.")
+      setSubmitError(error instanceof Error ? error.message : "No se pudo iniciar sesion.")
     }
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4 py-6">
-      <div className="grid w-full max-w-[1100px] overflow-hidden rounded-[28px] bg-card/95 ledger-shadow ledger-ghost-border md:grid-cols-[1.05fr_0.95fr]">
-        <section className="relative hidden min-h-[720px] flex-col justify-between overflow-hidden bg-muted p-12 md:flex">
-          <div className="space-y-10">
+    <div className="flex min-h-[100dvh] items-center justify-center px-3 py-3 sm:px-4 sm:py-4">
+      <div className="ledger-reveal grid w-full max-w-[1220px] overflow-hidden rounded-[2rem] border border-white/10 bg-card shadow-[0_28px_70px_-36px_rgba(23,35,46,0.26)] md:grid-cols-[1.08fr_0.92fr]">
+        <section className="relative flex min-h-[360px] flex-col justify-between overflow-hidden bg-[oklch(0.24_0.02_225)] p-6 text-white sm:p-10 md:min-h-[760px] md:p-12">
+          <div className="space-y-8 sm:space-y-10">
             <div className="flex items-center gap-3">
-              <div className="ledger-primary-gradient flex size-10 items-center justify-center rounded-md text-primary-foreground">
+              <div className="ledger-primary-gradient flex size-11 items-center justify-center rounded-xl text-primary-foreground">
                 <Building2 className="size-4" />
               </div>
               <div>
-                <p className="font-heading text-2xl font-bold text-foreground">Retail Ledger</p>
-                <p className="text-sm text-muted-foreground">Order management operations</p>
+                <p className="font-heading text-2xl font-semibold tracking-[-0.05em] text-white">Retail Ledger</p>
+                <p className="text-sm text-white/56">Secured retail operations</p>
               </div>
             </div>
 
             <div className="space-y-5">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-muted-foreground">
-                Sign-in gateway
-              </p>
-              <h1 className="max-w-lg text-5xl font-semibold leading-[1.02] text-foreground">
-                Precision across products, customers, inventory, and orders.
+              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/42">Sign-in gateway</p>
+              <h1 className="max-w-xl text-4xl font-semibold leading-[0.95] tracking-[-0.07em] text-white sm:text-[3.55rem]">
+                Open the retail workspace with the same calm you expect from the operation itself.
               </h1>
-              <p className="max-w-md text-base leading-7 text-muted-foreground">
-                Entra en la consola operativa para trabajar con datos reales de negocio y una sesión JWT protegida desde el primer paso.
+              <p className="max-w-lg text-sm leading-7 text-white/64 sm:text-base">
+                Access a workspace built for products, customers, stock and orders, with JWT authentication and immediate feedback around every action.
               </p>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-[minmax(0,1.35fr)_repeat(2,minmax(0,1fr))]">
+              <div className="border-t border-white/10 pt-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/42">Workspace posture</p>
+                <p className="mt-2 text-sm leading-7 text-white/78">
+                  A quieter working surface built for catalog review, stock visibility and transactional order flow.
+                </p>
+              </div>
+              <div className="border-t border-white/10 pt-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/42">Inventory</p>
+                <p className="mt-2 text-sm leading-6 text-white/78">Low-stock signals and availability checks.</p>
+              </div>
+              <div className="border-t border-white/10 pt-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/42">Orders</p>
+                <p className="mt-2 text-sm leading-6 text-white/78">Transactional creation and controlled cancellation.</p>
+              </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
-            <div className="flex size-12 items-center justify-center rounded-full bg-card ledger-shadow">
-              <LockKeyhole className="size-5 text-primary" />
+          <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+            <div className="flex items-center gap-4">
+              <div className="flex size-12 items-center justify-center rounded-full bg-white/8 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+                <ShieldCheck className="size-5 text-white/82" />
+              </div>
+              <div>
+                <p className="font-medium text-white">Bootstrap credentials ready</p>
+                <p className="text-sm text-white/56">
+                  Demo backend user available for this environment.
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="font-medium text-foreground">Bootstrap credentials ready</p>
-              <p className="text-sm text-muted-foreground">
-                Default backend user: <span className="font-medium text-foreground">admin / admin123</span>
-              </p>
+            <div className="border-t border-white/10 pt-4 text-sm">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white/42">Access</p>
+              <p className="text-white">admin / admin123</p>
             </div>
           </div>
 
-          <div className="pointer-events-none absolute -bottom-24 right-[-12px] text-[280px] font-heading font-extrabold leading-none text-primary/6">
+          <div className="pointer-events-none absolute -bottom-20 right-[-8px] text-[220px] font-heading font-bold leading-none text-white/6 sm:text-[280px]">
             RL
           </div>
         </section>
 
-        <section className="flex items-center justify-center bg-card px-6 py-10 md:px-12">
-          <Card className="w-full border-0 shadow-none">
+        <section className="flex items-center justify-center bg-card px-5 py-8 sm:px-8 md:px-12">
+          <Card className="w-full border-0 bg-transparent shadow-none">
             <CardContent className="space-y-8 p-0">
               <div className="space-y-3">
-                <div className="md:hidden flex items-center gap-3">
-                  <div className="ledger-primary-gradient flex size-10 items-center justify-center rounded-md text-primary-foreground">
+                <div className="flex items-center gap-3 md:hidden">
+                  <div className="ledger-primary-gradient flex size-10 items-center justify-center rounded-xl text-primary-foreground">
                     <Building2 className="size-4" />
                   </div>
                   <div>
-                    <p className="font-heading text-xl font-bold">Retail Ledger</p>
-                    <p className="text-sm text-muted-foreground">JWT operations suite</p>
+                    <p className="font-heading text-xl font-semibold tracking-[-0.04em]">Retail Ledger</p>
+                    <p className="text-sm text-muted-foreground">Operational console</p>
                   </div>
                 </div>
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">
-                    Secure access
-                  </p>
-                  <h2 className="mt-3 text-3xl font-semibold text-foreground">Sign in to continue</h2>
-                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                    Usa tu cuenta de backend para entrar al frontend operativo de retail order management.
+                  <p className="ledger-kicker">Secure access</p>
+                  <h2 className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-foreground">Enter the workspace</h2>
+                  <p className="mt-2 text-sm leading-7 text-muted-foreground">
+                    Use a valid backend account to open the operational frontend and keep working with the current API contracts.
                   </p>
                 </div>
               </div>
 
               {submitError ? (
-                <Alert className="border-destructive/20 bg-destructive/5 text-destructive">
+                <Alert variant="destructive">
                   <AlertCircle className="size-4" />
                   <AlertTitle>Authentication failed</AlertTitle>
                   <AlertDescription>{submitError}</AlertDescription>
@@ -133,6 +174,7 @@ export function LoginPage() {
                 <FormField
                   label="Username"
                   htmlFor="username"
+                  hint="Use the backend bootstrap account or any valid authenticated user."
                   error={form.formState.errors.username?.message}
                 >
                   <div className="relative">
@@ -140,7 +182,7 @@ export function LoginPage() {
                     <Input
                       id="username"
                       autoComplete="username"
-                      className="h-11 rounded-md bg-muted pl-10"
+                      className="bg-muted pl-10"
                       placeholder="admin"
                       {...form.register("username")}
                     />
@@ -150,22 +192,23 @@ export function LoginPage() {
                 <FormField
                   label="Password"
                   htmlFor="password"
+                  hint="Credentials are sent to the existing JWT login endpoint."
                   error={form.formState.errors.password?.message}
                 >
                   <div className="relative">
-                    <LockKeyhole className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                    <KeyRound className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
                       id="password"
                       type="password"
                       autoComplete="current-password"
-                      className="h-11 rounded-md bg-muted pl-10"
-                      placeholder="••••••••••••"
+                      className="bg-muted pl-10"
+                      placeholder="Enter your password"
                       {...form.register("password")}
                     />
                   </div>
                 </FormField>
 
-                <div className="flex items-center gap-3 rounded-lg bg-muted/70 px-4 py-3">
+                <div className="flex items-center gap-3 rounded-[1rem] bg-muted/75 px-4 py-3">
                   <Checkbox
                     id="remember"
                     checked={remember}
@@ -178,12 +221,19 @@ export function LoginPage() {
 
                 <Button
                   type="submit"
-                  className="h-11 w-full rounded-md ledger-primary-gradient text-primary-foreground"
+                  className="w-full ledger-primary-gradient text-primary-foreground"
                   disabled={form.formState.isSubmitting}
                 >
-                  {form.formState.isSubmitting ? "Authorizing..." : "Authorize entry"}
+                  {form.formState.isSubmitting ? "Authorizing access..." : "Open workspace"}
                   <ArrowRight className="size-4" />
                 </Button>
+
+                <div className="rounded-[1rem] border border-border/80 bg-background/80 px-4 py-3 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-2 text-foreground">
+                    <LockKeyhole className="size-4 text-primary" />
+                    Session persistence is stored only on this device when you keep the session active.
+                  </div>
+                </div>
               </form>
             </CardContent>
           </Card>

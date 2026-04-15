@@ -40,6 +40,8 @@ export type ProductCreateRequest = {
   sku: string
 }
 
+export type ProductUpdateRequest = ProductCreateRequest
+
 export type CustomerResponse = {
   id: number
   firstName: string
@@ -57,6 +59,8 @@ export type CustomerCreateRequest = {
   email: string
   phone?: string
 }
+
+export type CustomerUpdateRequest = CustomerCreateRequest
 
 export type InventoryProductSummary = {
   id: number
@@ -77,6 +81,17 @@ export type InventoryCreateRequest = {
   productId: number
   quantityAvailable: number
   minimumStock?: number
+}
+
+export type InventoryUpdateRequest = {
+  minimumStock: number
+}
+
+export type InventoryAdjustmentType = "INCREASE" | "DECREASE"
+
+export type InventoryAdjustmentRequest = {
+  type: InventoryAdjustmentType
+  quantity: number
 }
 
 export type OrderCustomerSummary = {

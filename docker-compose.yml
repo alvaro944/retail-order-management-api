@@ -3,17 +3,17 @@ services:
     image: postgres:15
     container_name: retail-order-management-db
     environment:
-      POSTGRES_DB: ${DB_NAME:-retail_order_management}
-      POSTGRES_USER: ${DB_USERNAME:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${RETAIL_DB_NAME:-retail_order_management}
+      POSTGRES_USER: ${RETAIL_DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${RETAIL_DB_PASSWORD:-postgres}
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-postgres} -d ${DB_NAME:-retail_order_management}"]
+      test: ["CMD-SHELL", "pg_isready -U ${RETAIL_DB_USERNAME:-postgres} -d ${RETAIL_DB_NAME:-retail_order_management}"]
       interval: 10s
       timeout: 5s
       retries: 10
       start_period: 10s
     ports:
-      - "${DB_PORT:-5432}:5432"
+      - "${RETAIL_DB_PORT:-5432}:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
 
@@ -28,11 +28,11 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: dev
       SERVER_PORT: ${SERVER_PORT:-8080}
-      DB_HOST: db
-      DB_PORT: 5432
-      DB_NAME: ${DB_NAME:-retail_order_management}
-      DB_USERNAME: ${DB_USERNAME:-postgres}
-      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      RETAIL_DB_HOST: db
+      RETAIL_DB_PORT: 5432
+      RETAIL_DB_NAME: ${RETAIL_DB_NAME:-retail_order_management}
+      RETAIL_DB_USERNAME: ${RETAIL_DB_USERNAME:-postgres}
+      RETAIL_DB_PASSWORD: ${RETAIL_DB_PASSWORD:-postgres}
       APP_SECURITY_JWT_SECRET: ${APP_SECURITY_JWT_SECRET:-changeit-changeit-changeit-changeit}
       APP_SECURITY_JWT_ISSUER: ${APP_SECURITY_JWT_ISSUER:-retail-order-management-api}
       APP_SECURITY_JWT_EXPIRATION_MINUTES: ${APP_SECURITY_JWT_EXPIRATION_MINUTES:-60}

@@ -4,6 +4,8 @@ const moneyFormatter = new Intl.NumberFormat("es-ES", {
   minimumFractionDigits: 2,
 })
 
+const numberFormatter = new Intl.NumberFormat("es-ES")
+
 const dateFormatter = new Intl.DateTimeFormat("es-ES", {
   day: "2-digit",
   month: "short",
@@ -14,6 +16,10 @@ const dateFormatter = new Intl.DateTimeFormat("es-ES", {
 
 export function formatMoney(value: number) {
   return moneyFormatter.format(value)
+}
+
+export function formatNumber(value: number) {
+  return numberFormatter.format(value)
 }
 
 export function formatDateTime(value: string) {

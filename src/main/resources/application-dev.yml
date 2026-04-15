@@ -1,10 +1,14 @@
 spring:
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:retail_order_management}
-    username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD:postgres}
+    url: jdbc:postgresql://${RETAIL_DB_HOST:localhost}:${RETAIL_DB_PORT:5432}/${RETAIL_DB_NAME:retail_order_management}
+    username: ${RETAIL_DB_USERNAME:postgres}
+    password: ${RETAIL_DB_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
       ddl-auto: update
     show-sql: true
+
+app:
+  demo-seed:
+    enabled: ${APP_DEMO_SEED_ENABLED:true}
