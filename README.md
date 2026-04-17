@@ -177,6 +177,7 @@ APP_SECURITY_BOOTSTRAP_USERNAME=admin
 APP_SECURITY_BOOTSTRAP_PASSWORD=admin123
 APP_SECURITY_BOOTSTRAP_ROLE=ADMIN
 APP_DEMO_SEED_ENABLED=true
+APP_CORS_ALLOWED_ORIGIN_PATTERNS=http://localhost:*,http://127.0.0.1:*
 ```
 
 The bootstrap user is intended for local development and manual verification in Phase 7B. Override those defaults through environment variables outside local development.
@@ -235,6 +236,7 @@ APP_SECURITY_BOOTSTRAP_USERNAME=admin
 APP_SECURITY_BOOTSTRAP_PASSWORD=admin123
 APP_SECURITY_BOOTSTRAP_ROLE=ADMIN
 APP_DEMO_SEED_ENABLED=true
+APP_CORS_ALLOWED_ORIGIN_PATTERNS=http://localhost:*,http://127.0.0.1:*
 ```
 Inside Docker Compose, `RETAIL_DB_HOST` is fixed to the `db` service. The remaining values can be overridden from your shell or a local `.env` file before running `docker compose up`.
 
@@ -284,7 +286,97 @@ mvn test -Dtest=CustomerControllerIntegrationTest
 mvn test -Dtest=InventoryControllerIntegrationTest
 mvn test -Dtest=JwtServiceTest
 mvn test -Dtest=OrderControllerIntegrationTest
+mvn test -Dtest=CorsConfigurationIntegrationTest
 ```
+
+## Portfolio Deployment
+
+For portfolio use, the recommended production setup is:
+
+- frontend on Vercel from `frontend/`
+- backend on Render using the root `Dockerfile`
+- PostgreSQL on Render as a managed database
+- `render.yaml` in the repo root to provision the backend and managed database as a Blueprint
+
+### Backend on Render
+
+Recommended Render service settings:
+
+- Runtime: Docker
+- Dockerfile path: `Dockerfile`
+- Health check path: `/api/v1/health`
+- Region: `frankfurt`
+
+If you want a reproducible setup, create the backend from the included Blueprint file:
+
+```text
+render.yaml
+```
+
+The Blueprint provisions:
+
+- one Docker-based web service for the Spring Boot API
+- one managed PostgreSQL database
+- generated JWT secret on first creation
+- prompted values for the demo password and frontend CORS origin
+
+The Blueprint uses `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, and `SPRING_DATASOURCE_PASSWORD` from the managed database so you do not need to wire `RETAIL_DB_*` manually when using `render.yaml`.
+
+Recommended environment variables:
+
+```bash
+SPRING_PROFILES_ACTIVE=dev
+SERVER_PORT=8080
+RETAIL_DB_HOST=<render-postgres-host>
+RETAIL_DB_PORT=<render-postgres-port>
+RETAIL_DB_NAME=<render-postgres-database>
+RETAIL_DB_USERNAME=<render-postgres-user>
+RETAIL_DB_PASSWORD=<render-postgres-password>
+APP_SECURITY_JWT_SECRET=<strong-random-secret>
+APP_SECURITY_JWT_ISSUER=retail-order-management-api
+APP_SECURITY_JWT_EXPIRATION_MINUTES=60
+APP_SECURITY_BOOTSTRAP_USERNAME=admin
+APP_SECURITY_BOOTSTRAP_PASSWORD=<strong-demo-password>
+APP_SECURITY_BOOTSTRAP_ROLE=ADMIN
+APP_DEMO_SEED_ENABLED=true
+APP_CORS_ALLOWED_ORIGIN_PATTERNS=https://<your-vercel-project>.vercel.app
+```
+
+`APP_CORS_ALLOWED_ORIGIN_PATTERNS` accepts a comma-separated list. Keep the local defaults for development, and add the Vercel domain plus any custom frontend domain in production.
+
+If you create the service from `render.yaml`, Render will ask you for the values marked with `sync: false` during the initial Blueprint flow. Fill them with:
+
+- `APP_SECURITY_BOOTSTRAP_PASSWORD`: the demo password you want to use in production
+- `APP_CORS_ALLOWED_ORIGIN_PATTERNS`: `https://<your-vercel-project>.vercel.app`
+
+If your Render workspace does not offer the `free` database plan, change the database plan in `render.yaml` to `basic-256mb` before syncing the Blueprint.
+
+### Frontend on Vercel
+
+Deploy `frontend/` as a separate Vercel project with:
+
+- Root Directory: `frontend`
+- Build Command: `npm run build`
+- Output Directory: `dist`
+
+Required environment variable:
+
+```bash
+VITE_API_BASE_URL=https://<your-render-backend>/api/v1
+```
+
+The frontend uses `BrowserRouter`, so deep links such as `/products`, `/customers`, and `/orders` need SPA rewrites. This repository includes that configuration in `frontend/vercel.json`.
+
+### Recommended Deployment Smoke Test
+
+After both services are live:
+
+- open the frontend URL
+- confirm the API status badge reaches online state
+- sign in with the configured demo account
+- list products, customers, inventory, and orders
+- reload a deep route such as `/orders` and verify Vercel serves the SPA correctly
+- confirm the seeded demo data is visible on a fresh database
 
 ### Continuous Integration
 

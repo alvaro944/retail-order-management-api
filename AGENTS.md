@@ -148,6 +148,7 @@ mvn test -Dtest=CustomerControllerIntegrationTest
 mvn test -Dtest=InventoryControllerIntegrationTest
 mvn test -Dtest=JwtServiceTest
 mvn test -Dtest=OrderControllerIntegrationTest
+mvn test -Dtest=CorsConfigurationIntegrationTest
 ```
 
 Manual API verification:
@@ -179,7 +180,13 @@ RETAIL_DB_NAME=retail_order_management
 RETAIL_DB_USERNAME=postgres
 RETAIL_DB_PASSWORD=postgres
 APP_DEMO_SEED_ENABLED=true
+APP_CORS_ALLOWED_ORIGIN_PATTERNS=http://localhost:*,http://127.0.0.1:*
 ```
+
+Deployment note:
+
+- Production CORS origins are configured through `APP_CORS_ALLOWED_ORIGIN_PATTERNS` as a comma-separated list.
+- For the separated portfolio deployment, point it at the deployed Vercel frontend domain and any custom frontend domain.
 
 Development demo data behavior:
 

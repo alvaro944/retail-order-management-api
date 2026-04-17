@@ -1,0 +1,49 @@
+services:
+  - type: web
+    name: retail-order-management-api
+    runtime: docker
+    plan: free
+    region: frankfurt
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: dev
+      - key: SERVER_PORT
+        value: "8080"
+      - key: SPRING_DATASOURCE_URL
+        fromDatabase:
+          name: retail-order-management-db
+          property: connectionString
+      - key: SPRING_DATASOURCE_USERNAME
+        fromDatabase:
+          name: retail-order-management-db
+          property: user
+      - key: SPRING_DATASOURCE_PASSWORD
+        fromDatabase:
+          name: retail-order-management-db
+          property: password
+      - key: APP_SECURITY_JWT_SECRET
+        generateValue: true
+      - key: APP_SECURITY_JWT_ISSUER
+        value: retail-order-management-api
+      - key: APP_SECURITY_JWT_EXPIRATION_MINUTES
+        value: "60"
+      - key: APP_SECURITY_BOOTSTRAP_USERNAME
+        value: admin
+      - key: APP_SECURITY_BOOTSTRAP_PASSWORD
+        sync: false
+      - key: APP_SECURITY_BOOTSTRAP_ROLE
+        value: ADMIN
+      - key: APP_DEMO_SEED_ENABLED
+        value: "true"
+      - key: APP_CORS_ALLOWED_ORIGIN_PATTERNS
+        sync: false
+
+databases:
+  - name: retail-order-management-db
+    plan: free
+    region: frankfurt
+    databaseName: retail_order_management
+    user: retail_order_management
+    ipAllowList: []

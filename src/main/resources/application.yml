@@ -21,6 +21,8 @@ server:
     context-path: /api/v1
 
 app:
+  cors:
+    allowed-origin-patterns: ${APP_CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:*,http://127.0.0.1:*}
   security:
     jwt:
       secret: ${APP_SECURITY_JWT_SECRET:changeit-changeit-changeit-changeit}
