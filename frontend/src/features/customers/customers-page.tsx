@@ -2,7 +2,7 @@ import { useMemo, useState } from "react"
 
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { PencilLine, Search, Trash2, UserPlus } from "lucide-react"
+import { Eye, PencilLine, Search, Trash2, UserPlus } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { toast } from "sonner"
@@ -24,7 +24,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   Table,
   TableBody,
@@ -34,9 +35,9 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { getProblemDetailMessage } from "@/lib/api/problem-detail"
-import { formatNumber } from "@/lib/format"
+import { formatDateTime, formatNumber } from "@/lib/format"
 import { buildCustomerPayload } from "@/features/customers/customer-payload"
-import { createCustomer, customerQueryKey, deleteCustomer, getCustomers, updateCustomer } from "@/features/customers/api"
+import { createCustomer, customerDetailQueryKey, customerQueryKey, deleteCustomer, getCustomerById, getCustomers, updateCustomer } from "@/features/customers/api"
 
 const schema = z.object({
   firstName: z.string().min(1, "First name is required").max(80),
@@ -172,7 +173,10 @@ function EditCustomerDialog({
   const mutation = useMutation({
     mutationFn: (values: FormValues) => updateCustomer(id, buildCustomerPayload(values)),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: customerQueryKey })
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: customerQueryKey }),
+        queryClient.invalidateQueries({ queryKey: customerDetailQueryKey(id) }),
+      ])
       toast.success("Customer updated successfully.")
       setOpen(false)
     },
@@ -232,6 +236,93 @@ function EditCustomerDialog({
   )
 }
 
+function CustomerDetailSheet({
+  customerId,
+  customerName,
+}: {
+  customerId: number
+  customerName: string
+}) {
+  const [open, setOpen] = useState(false)
+  const customerQuery = useQuery({
+    queryKey: customerDetailQueryKey(customerId),
+    queryFn: () => getCustomerById(customerId),
+    enabled: open,
+  })
+
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger render={<Button variant="outline" size="sm" />}>
+        <Eye className="size-4" />
+        View
+      </SheetTrigger>
+      <SheetContent className="w-full max-w-xl overflow-y-auto border-l border-border bg-card">
+        <SheetHeader className="space-y-2 border-b border-border p-6">
+          <SheetTitle>Customer details</SheetTitle>
+          <SheetDescription>Review the contact record for {customerName}.</SheetDescription>
+        </SheetHeader>
+
+        <div className="space-y-6 p-6">
+          {customerQuery.isLoading ? (
+            <div className="space-y-4">
+              <Skeleton className="h-24 rounded-[1.25rem]" />
+              <Skeleton className="h-24 rounded-[1.25rem]" />
+              <Skeleton className="h-24 rounded-[1.25rem]" />
+            </div>
+          ) : null}
+
+          {customerQuery.isError ? (
+            <Alert variant="destructive">
+              <AlertTitle>Customer details could not be loaded</AlertTitle>
+              <AlertDescription>{getProblemDetailMessage(customerQuery.error, "Try again in a moment.")}</AlertDescription>
+            </Alert>
+          ) : null}
+
+          {customerQuery.data ? (
+            <>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-[1rem] border border-border/80 bg-muted/35 p-4 sm:col-span-2">
+                  <p className="ledger-kicker">Customer</p>
+                  <p className="mt-2 text-lg font-semibold tracking-[-0.04em] text-foreground">
+                    {customerQuery.data.firstName} {customerQuery.data.lastName}
+                  </p>
+                </div>
+                <div className="rounded-[1rem] border border-border/80 bg-muted/35 p-4">
+                  <p className="ledger-kicker">Email</p>
+                  <p className="mt-2 text-sm text-foreground">{customerQuery.data.email}</p>
+                </div>
+                <div className="rounded-[1rem] border border-border/80 bg-muted/35 p-4">
+                  <p className="ledger-kicker">Phone</p>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    {customerQuery.data.phone || "Not provided"}
+                  </p>
+                </div>
+                <div className="rounded-[1rem] border border-border/80 bg-muted/35 p-4">
+                  <p className="ledger-kicker">Status</p>
+                  <p className="mt-2 text-sm text-foreground">
+                    {customerQuery.data.active ? "Active" : "Inactive"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-[1rem] border border-border/80 bg-muted/35 p-4">
+                  <p className="ledger-kicker">Created</p>
+                  <p className="mt-2 text-sm text-muted-foreground">{formatDateTime(customerQuery.data.createdAt)}</p>
+                </div>
+                <div className="rounded-[1rem] border border-border/80 bg-muted/35 p-4">
+                  <p className="ledger-kicker">Updated</p>
+                  <p className="mt-2 text-sm text-muted-foreground">{formatDateTime(customerQuery.data.updatedAt)}</p>
+                </div>
+              </div>
+            </>
+          ) : null}
+        </div>
+      </SheetContent>
+    </Sheet>
+  )
+}
+
 function DeactivateCustomerDialog({
   id,
   firstName,
@@ -247,7 +338,10 @@ function DeactivateCustomerDialog({
   const mutation = useMutation({
     mutationFn: () => deleteCustomer(id),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: customerQueryKey })
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: customerQueryKey }),
+        queryClient.invalidateQueries({ queryKey: customerDetailQueryKey(id) }),
+      ])
       toast.success("Customer removed from the active list.")
       setOpen(false)
     },
@@ -400,6 +494,10 @@ export function CustomersPage() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
+                          <CustomerDetailSheet
+                            customerId={customer.id}
+                            customerName={`${customer.firstName} ${customer.lastName}`}
+                          />
                           <EditCustomerDialog
                             id={customer.id}
                             firstName={customer.firstName}

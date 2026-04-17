@@ -2,7 +2,7 @@ import { useMemo, useState } from "react"
 
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Plus, RotateCcw, Search, ShoppingCart } from "lucide-react"
+import { Eye, Plus, RotateCcw, Search, ShoppingCart } from "lucide-react"
 import { useFieldArray, useForm, useWatch } from "react-hook-form"
 import { z } from "zod"
 import { toast } from "sonner"
@@ -26,12 +26,14 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { getProblemDetailMessage } from "@/lib/api/problem-detail"
 import { formatDateTime, formatMoney, formatNumber } from "@/lib/format"
 import { customerQueryKey, getCustomers } from "@/features/customers/api"
 import { getInventory, inventoryQueryKey } from "@/features/inventory/api"
-import { cancelOrder, createOrder, getOrders, orderQueryKey } from "@/features/orders/api"
+import { cancelOrder, createOrder, getOrderById, getOrders, orderDetailQueryKey, orderQueryKey } from "@/features/orders/api"
 import { getProducts, productQueryKey } from "@/features/products/api"
 
 const schema = z.object({
@@ -352,26 +354,36 @@ function CancelOrderDialog({
   customerName,
   totalAmount,
   itemCount,
+  detailQueryKey,
 }: {
   orderId: number
   customerName: string
   totalAmount: number
   itemCount: number
+  detailQueryKey?: readonly unknown[]
 }) {
+  const [open, setOpen] = useState(false)
   const queryClient = useQueryClient()
   const mutation = useMutation({
     mutationFn: () => cancelOrder(orderId),
     onSuccess: async () => {
-      await Promise.all([
+      const invalidations: Promise<unknown>[] = [
         queryClient.invalidateQueries({ queryKey: orderQueryKey }),
         queryClient.invalidateQueries({ queryKey: inventoryQueryKey }),
-      ])
+      ]
+
+      if (detailQueryKey) {
+        invalidations.push(queryClient.invalidateQueries({ queryKey: detailQueryKey }))
+      }
+
+      await Promise.all(invalidations)
       toast.success("Order cancelled successfully.")
+      setOpen(false)
     },
   })
 
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger render={<Button variant="outline" size="sm" />}>
         <RotateCcw className="size-4" />
         Cancel
@@ -404,6 +416,139 @@ function CancelOrderDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  )
+}
+
+function OrderDetailSheet({
+  orderId,
+}: {
+  orderId: number
+}) {
+  const [open, setOpen] = useState(false)
+  const detailKey = orderDetailQueryKey(orderId)
+  const orderQuery = useQuery({
+    queryKey: detailKey,
+    queryFn: () => getOrderById(orderId),
+    enabled: open,
+  })
+
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger render={<Button variant="outline" size="sm" />}>
+        <Eye className="size-4" />
+        View
+      </SheetTrigger>
+      <SheetContent className="w-full max-w-xl overflow-y-auto border-l border-border bg-card">
+        <SheetHeader className="space-y-2 border-b border-border p-6">
+          <SheetTitle>Order details</SheetTitle>
+          <SheetDescription>Review the full record for order #{orderId}.</SheetDescription>
+        </SheetHeader>
+
+        <div className="space-y-6 p-6">
+          {orderQuery.isLoading ? (
+            <div className="space-y-4">
+              <Skeleton className="h-24 rounded-[1.25rem]" />
+              <Skeleton className="h-24 rounded-[1.25rem]" />
+              <Skeleton className="h-40 rounded-[1.25rem]" />
+            </div>
+          ) : null}
+
+          {orderQuery.isError ? (
+            <Alert variant="destructive">
+              <AlertTitle>Order details could not be loaded</AlertTitle>
+              <AlertDescription>{getProblemDetailMessage(orderQuery.error, "Try again in a moment.")}</AlertDescription>
+            </Alert>
+          ) : null}
+
+          {orderQuery.data ? (
+            <>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-[1rem] border border-border/80 bg-muted/35 p-4">
+                  <p className="ledger-kicker">Order</p>
+                  <p className="mt-2 text-lg font-semibold tracking-[-0.04em] text-foreground">
+                    #{orderQuery.data.id}
+                  </p>
+                </div>
+                <div className="rounded-[1rem] border border-border/80 bg-muted/35 p-4">
+                  <p className="ledger-kicker">Status</p>
+                  <div className="mt-2">
+                    <StatusBadge status={orderQuery.data.status} />
+                  </div>
+                </div>
+                <div className="rounded-[1rem] border border-border/80 bg-muted/35 p-4">
+                  <p className="ledger-kicker">Total</p>
+                  <p className="mt-2 text-base font-medium text-foreground">
+                    {formatMoney(orderQuery.data.totalAmount)}
+                  </p>
+                </div>
+                <div className="rounded-[1rem] border border-border/80 bg-muted/35 p-4">
+                  <p className="ledger-kicker">Lines</p>
+                  <p className="mt-2 text-base font-medium text-foreground">
+                    {formatNumber(orderQuery.data.items.length)}
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-[1rem] border border-border/80 bg-muted/35 p-4">
+                <p className="ledger-kicker">Customer</p>
+                <p className="mt-2 text-base font-medium text-foreground">
+                  {orderQuery.data.customer.firstName} {orderQuery.data.customer.lastName}
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">{orderQuery.data.customer.email}</p>
+              </div>
+
+              <div className="rounded-[1rem] border border-border/80 bg-muted/35 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="ledger-kicker">Items</p>
+                    <p className="mt-2 text-sm text-muted-foreground">Full order lines and recorded totals.</p>
+                  </div>
+                  {orderQuery.data.status === "CREATED" ? (
+                    <CancelOrderDialog
+                      orderId={orderQuery.data.id}
+                      customerName={`${orderQuery.data.customer.firstName} ${orderQuery.data.customer.lastName}`}
+                      totalAmount={orderQuery.data.totalAmount}
+                      itemCount={orderQuery.data.items.length}
+                      detailQueryKey={detailKey}
+                    />
+                  ) : null}
+                </div>
+
+                <div className="mt-4 space-y-3">
+                  {orderQuery.data.items.map((item) => (
+                    <div key={item.id} className="rounded-[0.95rem] border border-border/75 bg-background px-4 py-3">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="space-y-1">
+                          <p className="font-medium text-foreground">{item.productName}</p>
+                          <p className="text-sm text-muted-foreground">{item.productSku}</p>
+                        </div>
+                        <div className="text-right text-sm">
+                          <p className="text-foreground">
+                            {formatNumber(item.quantity)} x {formatMoney(item.unitPrice)}
+                          </p>
+                          <p className="text-muted-foreground">Subtotal {formatMoney(item.subtotal)}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-[1rem] border border-border/80 bg-muted/35 p-4">
+                  <p className="ledger-kicker">Created</p>
+                  <p className="mt-2 text-sm text-muted-foreground">{formatDateTime(orderQuery.data.createdAt)}</p>
+                </div>
+                <div className="rounded-[1rem] border border-border/80 bg-muted/35 p-4">
+                  <p className="ledger-kicker">Updated</p>
+                  <p className="mt-2 text-sm text-muted-foreground">{formatDateTime(orderQuery.data.updatedAt)}</p>
+                </div>
+              </div>
+            </>
+          ) : null}
+        </div>
+      </SheetContent>
+    </Sheet>
   )
 }
 
@@ -544,7 +689,7 @@ export function OrdersPage() {
                     <TableHead>Total</TableHead>
                     <TableHead>Items</TableHead>
                     <TableHead>Created</TableHead>
-                    <TableHead className="text-right">Action</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -600,16 +745,17 @@ export function OrdersPage() {
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">{formatDateTime(order.createdAt)}</TableCell>
                         <TableCell className="text-right">
-                          {order.status === "CREATED" ? (
-                            <CancelOrderDialog
-                              orderId={order.id}
-                              customerName={`${order.customer.firstName} ${order.customer.lastName}`}
-                              totalAmount={order.totalAmount}
-                              itemCount={order.items.length}
-                            />
-                          ) : (
-                            <span className="text-xs text-muted-foreground">-</span>
-                          )}
+                          <div className="flex justify-end gap-2">
+                            <OrderDetailSheet orderId={order.id} />
+                            {order.status === "CREATED" ? (
+                              <CancelOrderDialog
+                                orderId={order.id}
+                                customerName={`${order.customer.firstName} ${order.customer.lastName}`}
+                                totalAmount={order.totalAmount}
+                                itemCount={order.items.length}
+                              />
+                            ) : null}
+                          </div>
                         </TableCell>
                       </TableRow>
                     )

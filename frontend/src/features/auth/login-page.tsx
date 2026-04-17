@@ -1,10 +1,12 @@
 import { useState } from "react"
 
 import { zodResolver } from "@hookform/resolvers/zod"
+import { useQuery } from "@tanstack/react-query"
 import {
   AlertCircle,
   ArrowRight,
   Building2,
+  LoaderCircle,
   KeyRound,
   LockKeyhole,
   ShieldCheck,
@@ -20,6 +22,8 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { useAuth } from "@/features/auth/auth-context"
+import { getHealth, healthQueryKey } from "@/features/health/api"
+import { cn } from "@/lib/utils"
 
 const loginSchema = z.object({
   username: z.string().min(1, "Username is required"),
@@ -32,6 +36,12 @@ type LoginFormValues = z.output<typeof loginSchema>
 export function LoginPage() {
   const { isAuthenticated, isInitializing, login } = useAuth()
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const healthQuery = useQuery({
+    queryKey: healthQueryKey,
+    queryFn: getHealth,
+    refetchOnWindowFocus: true,
+    refetchInterval: (query) => (query.state.data?.status === "UP" ? false : 10000),
+  })
 
   const form = useForm<z.input<typeof loginSchema>, unknown, LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -42,6 +52,8 @@ export function LoginPage() {
     },
   })
   const remember = useWatch({ control: form.control, name: "remember" })
+  const isApiReady = healthQuery.data?.status === "UP"
+  const showConnectingState = healthQuery.isLoading || healthQuery.isError || !isApiReady
 
   if (!isInitializing && isAuthenticated) {
     return <Navigate to="/products" replace />
@@ -95,6 +107,36 @@ export function LoginPage() {
                 Sign in with the demo account to review products, customers, inventory and orders with seeded data and real API responses.
               </p>
             </div>
+
+            <div
+              className={cn(
+                "max-w-xl rounded-[1.4rem] border px-5 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]",
+                isApiReady
+                  ? "border-emerald-300/20 bg-emerald-400/10"
+                  : "border-amber-300/16 bg-amber-300/10",
+              )}
+            >
+              <div className="flex items-start gap-3">
+                <div
+                  className={cn(
+                    "mt-1 flex size-9 items-center justify-center rounded-full",
+                    isApiReady ? "bg-emerald-300/16 text-emerald-200" : "bg-amber-200/12 text-amber-100",
+                  )}
+                >
+                  {showConnectingState ? <LoaderCircle className="size-4 animate-spin" /> : <ShieldCheck className="size-4" />}
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-white">
+                    {isApiReady ? "API online" : "Server is still connecting"}
+                  </p>
+                  <p className="max-w-lg text-sm leading-6 text-white/68">
+                    {isApiReady
+                      ? "The backend is ready and you can sign in now."
+                      : "If this is a fresh deployment, wait a moment. The backend can take a little while to become available."}
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
@@ -146,6 +188,16 @@ export function LoginPage() {
                 </Alert>
               ) : null}
 
+              {showConnectingState ? (
+                <Alert>
+                  <LoaderCircle className="size-4 animate-spin" />
+                  <AlertTitle>Backend starting up</AlertTitle>
+                  <AlertDescription>
+                    The login will be available as soon as the server finishes connecting. Try again in a moment.
+                  </AlertDescription>
+                </Alert>
+              ) : null}
+
               <form className="space-y-5" onSubmit={form.handleSubmit(handleSubmit)}>
                 <FormField label="Username" htmlFor="username" error={form.formState.errors.username?.message}>
                   <div className="relative">
@@ -188,9 +240,13 @@ export function LoginPage() {
                 <Button
                   type="submit"
                   className="w-full ledger-primary-gradient text-primary-foreground"
-                  disabled={form.formState.isSubmitting}
+                  disabled={form.formState.isSubmitting || showConnectingState}
                 >
-                  {form.formState.isSubmitting ? "Authorizing access..." : "Open workspace"}
+                  {form.formState.isSubmitting
+                    ? "Authorizing access..."
+                    : showConnectingState
+                      ? "Waiting for server..."
+                      : "Open workspace"}
                   <ArrowRight className="size-4" />
                 </Button>
 

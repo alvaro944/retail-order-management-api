@@ -2,7 +2,7 @@ import { useMemo, useState } from "react"
 
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { PackagePlus, PencilLine, Search, Trash2 } from "lucide-react"
+import { Eye, PackagePlus, PencilLine, Search, Trash2 } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { toast } from "sonner"
@@ -25,7 +25,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   Table,
   TableBody,
@@ -34,9 +35,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { getProblemDetailMessage } from "@/lib/api/problem-detail"
-import { formatMoney, formatNumber } from "@/lib/format"
-import { createProduct, deleteProduct, getProducts, productQueryKey, updateProduct } from "@/features/products/api"
+import { hasHttpStatus, getProblemDetailMessage } from "@/lib/api/problem-detail"
+import { formatDateTime, formatMoney, formatNumber } from "@/lib/format"
+import { getInventoryByProductId, inventoryByProductQueryKey } from "@/features/inventory/api"
+import { createProduct, deleteProduct, getProductById, getProducts, productDetailQueryKey, productQueryKey, updateProduct } from "@/features/products/api"
 import { buildProductPayload } from "@/features/products/product-payload"
 
 const schema = z.object({
@@ -173,7 +175,10 @@ function EditProductDialog({
   const mutation = useMutation({
     mutationFn: (values: FormValues) => updateProduct(id, buildProductPayload(values)),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: productQueryKey })
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: productQueryKey }),
+        queryClient.invalidateQueries({ queryKey: productDetailQueryKey(id) }),
+      ])
       toast.success("Product updated successfully.")
       setOpen(false)
     },
@@ -233,6 +238,149 @@ function EditProductDialog({
   )
 }
 
+function ProductDetailSheet({
+  productId,
+  productName,
+}: {
+  productId: number
+  productName: string
+}) {
+  const [open, setOpen] = useState(false)
+  const productQuery = useQuery({
+    queryKey: productDetailQueryKey(productId),
+    queryFn: () => getProductById(productId),
+    enabled: open,
+  })
+  const inventoryQuery = useQuery({
+    queryKey: inventoryByProductQueryKey(productId),
+    queryFn: () => getInventoryByProductId(productId),
+    enabled: open && productQuery.isSuccess,
+  })
+
+  const isInventoryMissing = inventoryQuery.isError && hasHttpStatus(inventoryQuery.error, 404)
+
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger render={<Button variant="outline" size="sm" />}>
+        <Eye className="size-4" />
+        View
+      </SheetTrigger>
+      <SheetContent className="w-full max-w-xl overflow-y-auto border-l border-border bg-card">
+        <SheetHeader className="space-y-2 border-b border-border p-6">
+          <SheetTitle>Product details</SheetTitle>
+          <SheetDescription>Review the catalog record for {productName}.</SheetDescription>
+        </SheetHeader>
+
+        <div className="space-y-6 p-6">
+          {productQuery.isLoading ? (
+            <div className="space-y-4">
+              <Skeleton className="h-24 rounded-[1.25rem]" />
+              <Skeleton className="h-28 rounded-[1.25rem]" />
+              <Skeleton className="h-32 rounded-[1.25rem]" />
+            </div>
+          ) : null}
+
+          {productQuery.isError ? (
+            <Alert variant="destructive">
+              <AlertTitle>Product details could not be loaded</AlertTitle>
+              <AlertDescription>{getProblemDetailMessage(productQuery.error, "Try again in a moment.")}</AlertDescription>
+            </Alert>
+          ) : null}
+
+          {productQuery.data ? (
+            <>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-[1rem] border border-border/80 bg-muted/35 p-4">
+                  <p className="ledger-kicker">Name</p>
+                  <p className="mt-2 text-lg font-semibold tracking-[-0.04em] text-foreground">
+                    {productQuery.data.name}
+                  </p>
+                </div>
+                <div className="rounded-[1rem] border border-border/80 bg-muted/35 p-4">
+                  <p className="ledger-kicker">SKU</p>
+                  <p className="mt-2 text-base font-medium text-foreground">{productQuery.data.sku}</p>
+                </div>
+                <div className="rounded-[1rem] border border-border/80 bg-muted/35 p-4">
+                  <p className="ledger-kicker">Price</p>
+                  <p className="mt-2 text-base font-medium text-foreground">{formatMoney(productQuery.data.price)}</p>
+                </div>
+                <div className="rounded-[1rem] border border-border/80 bg-muted/35 p-4">
+                  <p className="ledger-kicker">Status</p>
+                  <p className="mt-2 text-base font-medium text-foreground">
+                    {productQuery.data.active ? "Active" : "Inactive"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-[1rem] border border-border/80 bg-muted/35 p-4">
+                <p className="ledger-kicker">Description</p>
+                <p className="mt-2 text-sm leading-7 text-muted-foreground">
+                  {productQuery.data.description || "No description"}
+                </p>
+              </div>
+
+              <div className="rounded-[1rem] border border-border/80 bg-muted/35 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="ledger-kicker">Inventory</p>
+                    <p className="mt-2 text-sm text-muted-foreground">Current stock linked to this product.</p>
+                  </div>
+                </div>
+
+                {inventoryQuery.isLoading ? (
+                  <div className="mt-4 space-y-3">
+                    <Skeleton className="h-10 rounded-xl" />
+                    <Skeleton className="h-10 rounded-xl" />
+                  </div>
+                ) : null}
+
+                {isInventoryMissing ? (
+                  <p className="mt-4 text-sm text-muted-foreground">No inventory record yet.</p>
+                ) : null}
+
+                {inventoryQuery.isError && !isInventoryMissing ? (
+                  <Alert className="mt-4" variant="destructive">
+                    <AlertTitle>Inventory could not be loaded</AlertTitle>
+                    <AlertDescription>{getProblemDetailMessage(inventoryQuery.error, "Try again in a moment.")}</AlertDescription>
+                  </Alert>
+                ) : null}
+
+                {inventoryQuery.data ? (
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-[0.95rem] border border-border/75 bg-background px-4 py-3">
+                      <p className="ledger-kicker">Available</p>
+                      <p className="mt-2 font-medium text-foreground">
+                        {formatNumber(inventoryQuery.data.quantityAvailable)}
+                      </p>
+                    </div>
+                    <div className="rounded-[0.95rem] border border-border/75 bg-background px-4 py-3">
+                      <p className="ledger-kicker">Minimum stock</p>
+                      <p className="mt-2 font-medium text-foreground">
+                        {inventoryQuery.data.minimumStock === null ? "None" : formatNumber(inventoryQuery.data.minimumStock)}
+                      </p>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-[1rem] border border-border/80 bg-muted/35 p-4">
+                  <p className="ledger-kicker">Created</p>
+                  <p className="mt-2 text-sm text-muted-foreground">{formatDateTime(productQuery.data.createdAt)}</p>
+                </div>
+                <div className="rounded-[1rem] border border-border/80 bg-muted/35 p-4">
+                  <p className="ledger-kicker">Updated</p>
+                  <p className="mt-2 text-sm text-muted-foreground">{formatDateTime(productQuery.data.updatedAt)}</p>
+                </div>
+              </div>
+            </>
+          ) : null}
+        </div>
+      </SheetContent>
+    </Sheet>
+  )
+}
+
 function DeactivateProductDialog({
   id,
   name,
@@ -246,7 +394,10 @@ function DeactivateProductDialog({
   const mutation = useMutation({
     mutationFn: () => deleteProduct(id),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: productQueryKey })
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: productQueryKey }),
+        queryClient.invalidateQueries({ queryKey: productDetailQueryKey(id) }),
+      ])
       toast.success("Product removed from the active catalog.")
       setOpen(false)
     },
@@ -407,6 +558,7 @@ export function ProductsPage() {
                       <TableCell className="font-medium text-foreground">{formatMoney(product.price)}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
+                          <ProductDetailSheet productId={product.id} productName={product.name} />
                           <EditProductDialog
                             id={product.id}
                             name={product.name}

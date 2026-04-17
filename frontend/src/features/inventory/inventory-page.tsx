@@ -2,7 +2,7 @@ import { useMemo, useState } from "react"
 
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { AlertTriangle, PencilLine, Search, Warehouse, Wrench } from "lucide-react"
+import { AlertTriangle, Eye, PencilLine, Search, Warehouse, Wrench } from "lucide-react"
 import { useForm, useWatch } from "react-hook-form"
 import { z } from "zod"
 import { toast } from "sonner"
@@ -27,7 +27,8 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   Table,
   TableBody,
@@ -42,6 +43,9 @@ import {
   adjustInventory,
   createInventory,
   getInventory,
+  getInventoryById,
+  inventoryByProductQueryKey,
+  inventoryDetailQueryKey,
   inventoryQueryKey,
   updateInventory,
 } from "@/features/inventory/api"
@@ -151,11 +155,13 @@ function CreateInventorySheet() {
 
 function EditInventoryDialog({
   inventoryId,
+  productId,
   productName,
   currentQuantity,
   currentMinimumStock,
 }: {
   inventoryId: number
+  productId: number
   productName: string
   currentQuantity: number
   currentMinimumStock: number | null
@@ -193,7 +199,11 @@ function EditInventoryDialog({
       await Promise.all(operations)
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: inventoryQueryKey })
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: inventoryQueryKey }),
+        queryClient.invalidateQueries({ queryKey: inventoryDetailQueryKey(inventoryId) }),
+        queryClient.invalidateQueries({ queryKey: inventoryByProductQueryKey(productId) }),
+      ])
       toast.success("Inventory updated successfully.")
       setOpen(false)
     },
@@ -286,6 +296,101 @@ function EditInventoryDialog({
         </form>
       </DialogContent>
     </Dialog>
+  )
+}
+
+function InventoryDetailSheet({
+  inventoryId,
+  productName,
+}: {
+  inventoryId: number
+  productName: string
+}) {
+  const [open, setOpen] = useState(false)
+  const inventoryQuery = useQuery({
+    queryKey: inventoryDetailQueryKey(inventoryId),
+    queryFn: () => getInventoryById(inventoryId),
+    enabled: open,
+  })
+
+  const isLowStock =
+    inventoryQuery.data?.minimumStock !== null &&
+    inventoryQuery.data?.minimumStock !== undefined &&
+    inventoryQuery.data.quantityAvailable <= inventoryQuery.data.minimumStock
+
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger render={<Button variant="outline" size="sm" />}>
+        <Eye className="size-4" />
+        View
+      </SheetTrigger>
+      <SheetContent className="w-full max-w-xl overflow-y-auto border-l border-border bg-card">
+        <SheetHeader className="space-y-2 border-b border-border p-6">
+          <SheetTitle>Inventory details</SheetTitle>
+          <SheetDescription>Review stock and threshold data for {productName}.</SheetDescription>
+        </SheetHeader>
+
+        <div className="space-y-6 p-6">
+          {inventoryQuery.isLoading ? (
+            <div className="space-y-4">
+              <Skeleton className="h-24 rounded-[1.25rem]" />
+              <Skeleton className="h-24 rounded-[1.25rem]" />
+              <Skeleton className="h-24 rounded-[1.25rem]" />
+            </div>
+          ) : null}
+
+          {inventoryQuery.isError ? (
+            <Alert variant="destructive">
+              <AlertTitle>Inventory details could not be loaded</AlertTitle>
+              <AlertDescription>{getProblemDetailMessage(inventoryQuery.error, "Try again in a moment.")}</AlertDescription>
+            </Alert>
+          ) : null}
+
+          {inventoryQuery.data ? (
+            <>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-[1rem] border border-border/80 bg-muted/35 p-4 sm:col-span-2">
+                  <p className="ledger-kicker">Product</p>
+                  <p className="mt-2 text-lg font-semibold tracking-[-0.04em] text-foreground">
+                    {inventoryQuery.data.product.name}
+                  </p>
+                  <p className="mt-1 text-sm text-muted-foreground">{inventoryQuery.data.product.sku}</p>
+                </div>
+                <div className="rounded-[1rem] border border-border/80 bg-muted/35 p-4">
+                  <p className="ledger-kicker">Available</p>
+                  <p className="mt-2 text-base font-medium text-foreground">
+                    {formatNumber(inventoryQuery.data.quantityAvailable)}
+                  </p>
+                </div>
+                <div className="rounded-[1rem] border border-border/80 bg-muted/35 p-4">
+                  <p className="ledger-kicker">Minimum stock</p>
+                  <p className="mt-2 text-base font-medium text-foreground">
+                    {inventoryQuery.data.minimumStock === null ? "None" : formatNumber(inventoryQuery.data.minimumStock)}
+                  </p>
+                </div>
+                <div className="rounded-[1rem] border border-border/80 bg-muted/35 p-4">
+                  <p className="ledger-kicker">Status</p>
+                  <div className="mt-2">
+                    <StatusBadge status={isLowStock ? "LOW" : "HEALTHY"} />
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-[1rem] border border-border/80 bg-muted/35 p-4">
+                  <p className="ledger-kicker">Created</p>
+                  <p className="mt-2 text-sm text-muted-foreground">{formatDateTime(inventoryQuery.data.createdAt)}</p>
+                </div>
+                <div className="rounded-[1rem] border border-border/80 bg-muted/35 p-4">
+                  <p className="ledger-kicker">Updated</p>
+                  <p className="mt-2 text-sm text-muted-foreground">{formatDateTime(inventoryQuery.data.updatedAt)}</p>
+                </div>
+              </div>
+            </>
+          ) : null}
+        </div>
+      </SheetContent>
+    </Sheet>
   )
 }
 
@@ -463,8 +568,10 @@ export function InventoryPage() {
                         <TableCell className="text-sm text-muted-foreground">{formatDateTime(item.updatedAt)}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
+                            <InventoryDetailSheet inventoryId={item.id} productName={item.product.name} />
                             <EditInventoryDialog
                               inventoryId={item.id}
+                              productId={item.product.id}
                               productName={item.product.name}
                               currentQuantity={item.quantityAvailable}
                               currentMinimumStock={item.minimumStock}

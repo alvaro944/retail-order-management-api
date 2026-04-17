@@ -1,10 +1,16 @@
 import { api } from "@/lib/api/client"
 import type { CustomerCreateRequest, CustomerResponse, CustomerUpdateRequest } from "@/lib/types"
 
-export const customerQueryKey = ["customers"]
+export const customerQueryKey = ["customers"] as const
+export const customerDetailQueryKey = (id: number) => ["customers", "detail", id] as const
 
 export async function getCustomers() {
   const { data } = await api.get<CustomerResponse[]>("/customers")
+  return data
+}
+
+export async function getCustomerById(id: number) {
+  const { data } = await api.get<CustomerResponse>(`/customers/${id}`)
   return data
 }
 

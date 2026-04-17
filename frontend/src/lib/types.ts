@@ -22,6 +22,12 @@ export type AuthenticatedUserResponse = {
   roles: string[]
 }
 
+export type HealthResponse = {
+  status: string
+  service: string
+  timestamp: string
+}
+
 export type ProductResponse = {
   id: number
   name: string

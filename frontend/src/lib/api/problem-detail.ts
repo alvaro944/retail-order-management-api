@@ -19,3 +19,7 @@ export function getProblemDetailMessage(error: unknown, fallback: string) {
   const detail = getProblemDetail(error)
   return detail?.detail ?? detail?.title ?? fallback
 }
+
+export function hasHttpStatus(error: unknown, status: number) {
+  return error instanceof AxiosError && error.response?.status === status
+}

@@ -1,9 +1,11 @@
+import { useQuery } from "@tanstack/react-query"
 import { Box, ClipboardList, Dot, LogOut, Package2, UsersRound, Warehouse } from "lucide-react"
 import { NavLink, Outlet } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/features/auth/auth-context"
+import { getHealth, healthQueryKey } from "@/features/health/api"
 
 const navigation = [
   { to: "/products", label: "Products", icon: Package2 },
@@ -16,6 +18,12 @@ export function AppShell() {
   const { currentUser, logout } = useAuth()
   const username = currentUser?.username ?? "admin"
   const roles = currentUser?.roles.join(", ") ?? "Admin"
+  const healthQuery = useQuery({
+    queryKey: healthQueryKey,
+    queryFn: getHealth,
+    refetchOnWindowFocus: true,
+  })
+  const isApiOnline = healthQuery.data?.status === "UP"
 
   return (
     <div className="min-h-[100dvh] bg-background">
@@ -37,6 +45,17 @@ export function AppShell() {
                 <p className="max-w-[28ch] text-sm leading-6 text-white/72">
                   Spring Boot retail admin demo for products, customers, stock and orders.
                 </p>
+                <div className="flex items-center gap-2 pt-1 text-xs text-white/58">
+                  <span
+                    className={cn(
+                      "size-2 rounded-full",
+                      healthQuery.isError ? "bg-amber-300/80" : isApiOnline ? "bg-emerald-300/85" : "bg-white/28",
+                    )}
+                  />
+                  <span>
+                    {healthQuery.isError ? "API unavailable" : isApiOnline ? "API online" : "Checking API"}
+                  </span>
+                </div>
               </div>
             </div>
 
