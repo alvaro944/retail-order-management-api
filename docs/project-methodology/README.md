@@ -60,3 +60,9 @@ If this folder is used in a future project or as a personal methodology guide, r
 4. `04-phased-delivery-model.md`
 5. `05-checklists-and-templates.md`
 6. `06-lessons-and-what-made-this-project-serious.md`
+
+Related Documents
+- [Development Workflow](../development-workflow.md)
+  Branching, commit and validation rules used while building the project.
+- [Future Improvements](../future-improvements.md)
+  Backlog of possible next steps if the project is resumed.
