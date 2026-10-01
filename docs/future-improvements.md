@@ -63,3 +63,5 @@ The goal of this file is not to reopen scope now, but to preserve the most usefu
 The project is already in a strong state for deployment and portfolio presentation.
 
 At this point, the highest-value move is to publish the current version rather than expand scope further.
+
+This backlog was last reviewed in October 2026.
