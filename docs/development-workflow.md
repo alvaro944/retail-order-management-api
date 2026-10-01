@@ -239,3 +239,5 @@ When a phase changes the effective behavior of the system, update at least:
 - `README.md` for public project understanding
 - `AGENTS.md` for future AI-assisted sessions
 - `docs/development-workflow.md` when the working agreement changes
+
+Every change in this repository is proposed through a reviewed pull request before it reaches main.
