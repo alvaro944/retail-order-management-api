@@ -49,6 +49,10 @@ Phase 10 is implemented:
 - Docker and Docker Compose for local container workflow
 - GitHub Actions for continuous integration
 
+## CI
+
+This repository uses GitHub Actions for Maven continuous integration.
+
 ## Project Structure
 
 ```text
