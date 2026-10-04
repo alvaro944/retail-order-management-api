@@ -59,6 +59,7 @@ Before merging:
 - Verify the expected request and response flow if an endpoint was added or changed.
 - Confirm README or technical docs are updated when needed.
 - If a branch is promoted to `main`, keep the feature branch unless cleanup was explicitly requested.
+- For pull requests opened by Hermes, confirm that the PR description reports a RUN_TESTS PASS for the reviewed tree.
 
 GitHub Actions now provides the repository's minimum automated validation on `push` and `pull_request`, but it does not replace the requirement to run `mvn clean verify` locally before closing work.
 
