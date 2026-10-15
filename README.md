@@ -562,3 +562,5 @@ Error payloads are returned as RFC 9457 `ProblemDetail` responses with a `path` 
 ## Immediate Next Step
 
 The next planned step after Phase 10 is the Advanced Evolution track, starting with domain events if still justified.
+
+hola
